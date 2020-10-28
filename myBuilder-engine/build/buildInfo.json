@@ -1,0 +1,72 @@
+{
+  "bundle": {
+    "commonSourceDirectory": "../src/engine",
+    "sourceFiles": [
+      "../src/engine/myBuilder.ts",
+      "../src/engine/basic/Utils.ts",
+      "../src/engine/basic/color/Color.ts",
+      "../src/engine/basic/math/Mask.ts",
+      "../src/engine/basic/math/Point.ts",
+      "../src/engine/basic/math/Vector.ts",
+      "../src/engine/basic/shape/Circle.ts",
+      "../src/engine/basic/shape/Rectangle.ts",
+      "../src/engine/basic/shape/Shape.ts",
+      "../src/engine/core/input/ButtonList.ts",
+      "../src/engine/core/input/CursorStyle.ts",
+      "../src/engine/core/input/Input.ts",
+      "../src/engine/core/input/KeyList.ts",
+      "../src/engine/core/thread/Thread.ts",
+      "../src/engine/core/world/Canvas.ts",
+      "../src/engine/core/world/World.ts",
+      "../src/engine/core/world/WorldTree.ts",
+      "../src/engine/node/Brush.ts",
+      "../src/engine/node/nodes/Node.ts",
+      "../src/engine/node/nodes/NodeObj.ts",
+      "../src/engine/node/tree/Tree.ts"
+    ],
+    "js": {
+      "sections": [
+        {
+          "pos": 0,
+          "end": 13,
+          "kind": "prologue",
+          "data": "use strict"
+        },
+        {
+          "pos": 15,
+          "end": 69727,
+          "kind": "text"
+        }
+      ],
+      "sources": {
+        "prologues": [
+          {
+            "file": 0,
+            "text": "",
+            "directives": [
+              {
+                "pos": -1,
+                "end": -1,
+                "expression": {
+                  "pos": -1,
+                  "end": -1,
+                  "text": "use strict"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "dts": {
+      "sections": [
+        {
+          "pos": 0,
+          "end": 31403,
+          "kind": "text"
+        }
+      ]
+    }
+  },
+  "version": "4.0.3"
+}
