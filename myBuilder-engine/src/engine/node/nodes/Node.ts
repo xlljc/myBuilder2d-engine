@@ -1,3 +1,24 @@
+
+/**
+ * 负责存储在其他类中需要调用的系统属性或方法
+ * NodeBase类的内部属性方法
+ */
+interface _$NodeBaseInside {
+	//*********************** 内部属性 ***************
+	/** 子节点树,内部变量 */
+	_$childTree: Tree;
+	/** 父节点树,内部变量 */
+	_$parentTree: Tree | undefined;
+
+	//*********************** 内部方法 ***************
+	/**
+	 * 绘制方法,每帧调用,通过brush来画图,
+	 * 该方法会在update方法之后调用,zindex越小调用就越早
+	 * @param brush 画笔
+	 */
+	_$nodeDraw: (brush: Brush, drawFunc?: () => void) => void;
+
+}
 /**
  * 节点基类
  */
@@ -19,14 +40,6 @@ abstract class NodeBase implements Obj {
 	 * @param delta 上一帧执行时间
 	 */
 	public abstract update(delta: number): void;
-
-	/**
-	 * 绘制方法,每帧调用,通过brush来画图,
-	 * 该方法会在update方法之后调用,zindex越小调用就越早
-	 * @param brush 画笔
-	 */
-	//public abstract draw(brush: Brush): void;
-	public draw: ((brush: Brush) => void) | undefined = undefined;
 
 	/**
 	 * 当节点离开节点树后再该帧结束时调用,
@@ -58,46 +71,6 @@ abstract class NodeBase implements Obj {
 	}
 
 	/**
-	 * 绘制方法,系统调用
-	 * @param brush 笔刷
-	 * @param drawFunc 重写_$nodeDraw方法时执行的绘制方法
-	 */
-	public _$nodeDraw(brush: Brush, drawFunc?: () => void) {
-		let context = brush.context;
-		brush._$tempGlobalAlpha = context.globalAlpha;
-		let alpha = this.alpha;
-		let pos = this.position;
-
-		let nodeList: NodeBase[] = [];
-		this.eachParentUp((node) => {
-			if (!node._$inheritTransform) return false;
-			nodeList.push(node);
-		})
-		for (let i = nodeList.length - 1; i >= 0; i--) {
-			let node: NodeBase = nodeList[i];
-			context.translate(node.position.x, node.position.y);
-			context.rotate(node.rotation);
-			let tempScale: Vector = node.scale;
-			context.scale(tempScale.x, tempScale.y);
-			alpha *= node.alpha;
-		}
-		//如果该节点不继承父节点transform,那么重置transform
-		if (!this._$inheritTransform) brush.resetTransform();
-		context.translate(pos.x, pos.y);
-		context.rotate(this.rotation);
-		context.scale(this.scale.x, this.scale.y);
-		context.globalAlpha = alpha;
-		brush._$tempGlobalAlpha = alpha;
-
-		if (drawFunc) drawFunc();
-		// @ts-ignore
-		else this.draw(brush);
-
-		//重置画布Transform
-		brush.resetTransform();
-	}
-
-	/**
 	 * 离开节点方法,系统调用
 	 */
 	public _$nodeLeave() {
@@ -109,6 +82,60 @@ abstract class NodeBase implements Obj {
 		this.name = name && name || "";
 		this._$nodeInit();
 	}
+
+	/**
+	 *  负责存储在其他类中需要调用的系统属性或方法
+	 */
+	public _$inside = {
+		//*********************** 内部属性 ***************
+		_$childTree: new Tree(this, []),
+		_$parentTree: undefined,
+		//*********************** 内部方法 ***************
+		_$nodeDraw: (brush: Brush, drawFunc?: () => void) => {
+			let context = brush.context;
+			brush._$tempGlobalAlpha = context.globalAlpha;
+			let alpha = this.alpha;
+			let pos = this.position;
+
+			let nodeList: NodeBase[] = [];
+			this.eachParentUp((node) => {
+				if (!node._$inheritTransform) return false;
+				nodeList.push(node);
+			})
+			for (let i = nodeList.length - 1; i >= 0; i--) {
+				let node: NodeBase = nodeList[i];
+				context.translate(node.position.x, node.position.y);
+				context.rotate(node.rotation);
+				let tempScale: Vector = node.scale;
+				context.scale(tempScale.x, tempScale.y);
+				alpha *= node.alpha;
+			}
+			//如果该节点不继承父节点transform,那么重置transform
+			if (!this._$inheritTransform) brush.resetTransform();
+			context.translate(pos.x, pos.y);
+			context.rotate(this.rotation);
+			context.scale(this.scale.x, this.scale.y);
+			context.globalAlpha = alpha;
+			brush._$tempGlobalAlpha = alpha;
+
+			if (drawFunc) drawFunc();
+			// @ts-ignore
+			else this.draw(brush);
+
+			//重置画布Transform
+			brush.resetTransform();
+		},
+	}
+
+	//************ 属性函数 *************
+
+	/**
+	 * 绘制方法,每帧调用,通过brush来画图,
+	 * 该方法会在update方法之后调用,zindex越小调用就越早
+	 * @param brush 画笔
+	 */
+	public draw: ((brush: Brush) => void) | undefined = undefined;
+
 
 	//************ 节点属性 *************
 
@@ -141,7 +168,7 @@ abstract class NodeBase implements Obj {
 	private _$inheritTransform: boolean = true;
 
 	/** 子节点树,内部变量 */
-	public _$childTree: Tree = new Tree(this, []);
+	//public _$childTree: Tree = new Tree(this, []);
 
 	/** 父节点树,内部变量 */
 	public _$parentTree: Tree | undefined;
@@ -275,7 +302,7 @@ abstract class NodeBase implements Obj {
 
 	/** 获取子节点树 */
 	public get childTree(): Tree {
-		return this._$childTree;
+		return this._$inside._$childTree;
 	}
 
 	/** 获取父节点 */
@@ -328,7 +355,7 @@ abstract class NodeBase implements Obj {
 	 */
 	public getChildren(): NodeBase[] {
 		let children: NodeBase[] = [];
-		let child = this._$childTree.child;
+		let child = this._$inside._$childTree.child;
 		// @ts-ignore
 		for (let i = 0; i < child.length; i++)
 			// @ts-ignore
@@ -354,7 +381,7 @@ abstract class NodeBase implements Obj {
 	 * @param layer 当前层级,不需要手动传该参数
 	 */
 	public eachChildren(func: (node: NodeBase, index?: number, layer?: number) => void | boolean, index: number = 0, layer: number = 1) {
-		this._$childTree.each((tree, index, layer) => {
+		this._$inside._$childTree.each((tree, index, layer) => {
 			return func(tree.node, index, layer);
 		})
 	}
@@ -383,9 +410,9 @@ abstract class NodeBase implements Obj {
 	 * @param node 子节点
 	 */
 	public addChild(node: NodeBase) {
-		this._$childTree.addChild(node._$childTree);
+		this._$inside._$childTree.addChild(node._$inside._$childTree);
 		//设置父级节点树
-		node._$parentTree = this._$childTree;
+		node._$parentTree = this._$inside._$childTree;
 	}
 
 	/**
@@ -393,7 +420,7 @@ abstract class NodeBase implements Obj {
 	 * @param node 子节点
 	 */
 	public removeChild(node: NodeBase) {
-		Tree._$addRemoveNode(this._$childTree, node._$childTree);
+		Tree._$addRemoveNode(this._$inside._$childTree, node._$inside._$childTree);
 	}
 
 	/**
@@ -464,34 +491,45 @@ class Sprite extends Node2D {
 	/** 当前显示帧数,下标从0开始,不会大于 (vFrames * hFrames) - 1 */
 	private _$frame: number = 0;
 
-	public _$nodeDraw(brush: Brush) {
-		super._$nodeDraw(brush, () => {
-			if (this._$texture) {
-				// imW : 图像宽度
-				// imH : 图像高度
-				// x : 图像绘制x坐标
-				// y : 图像绘制y坐标
-				let imW, imH, x, y;
-				if (!this._$regionEnable) { //判断是否要要启用区域显示
-					imW = this._$texture.width / this._$hFrames;
-					imH = this._$texture.height / this._$vFrames;
-					x = this._$frame % this._$hFrames * imW;
-					y = (this._$frame / this._$hFrames >> 0) * imH;
-				} else {
-					imW = this._$regionRect.w / this._$hFrames;
-					imH = this._$regionRect.h / this._$vFrames;
-					x = this._$regionRect.x + this._$frame % this._$hFrames * imW;
-					y = this._$regionRect.y + (this._$frame / this._$hFrames >> 0) * imH;
+	public constructor(name: string) {
+		super(name);
+		console.log("----------------");
+		console.log(this._$inside);
+		console.log(super._$inside);
+
+		this._$inside._$nodeDraw = (brush: Brush) => {
+			console.log("----------------");
+			console.log(this._$inside);
+			console.log(super._$inside);
+
+			super._$inside._$nodeDraw(brush, () => {
+				if (this._$texture) {
+					// imW : 图像宽度
+					// imH : 图像高度
+					// x : 图像绘制x坐标
+					// y : 图像绘制y坐标
+					let imW, imH, x, y;
+					if (!this._$regionEnable) { //判断是否要要启用区域显示
+						imW = this._$texture.width / this._$hFrames;
+						imH = this._$texture.height / this._$vFrames;
+						x = this._$frame % this._$hFrames * imW;
+						y = (this._$frame / this._$hFrames >> 0) * imH;
+					} else {
+						imW = this._$regionRect.w / this._$hFrames;
+						imH = this._$regionRect.h / this._$vFrames;
+						x = this._$regionRect.x + this._$frame % this._$hFrames * imW;
+						y = this._$regionRect.y + (this._$frame / this._$hFrames >> 0) * imH;
+					}
+					if (this._$centered) //是否居中
+						brush.context.drawImage(this._$texture, x, y, imW, imH,
+							-imW / 2 + this._$xOffset, -imH / 2 + this._$yOffset,
+							imW, imH);
+					else brush.context.drawImage(this._$texture, x, y, imW, imH, this._$xOffset, this._$yOffset, imW, imH);
 				}
-				if (this._$centered) //是否居中
-					brush.context.drawImage(this._$texture, x, y, imW, imH,
-						-imW / 2 + this._$xOffset, -imH / 2 + this._$yOffset,
-						imW, imH);
-				else brush.context.drawImage(this._$texture, x, y, imW, imH, this._$xOffset, this._$yOffset, imW, imH);
-			}
-			// @ts-ignore
-			this.draw(brush);
-		});
+				// @ts-ignore
+				this.draw(brush);
+			});
+		}
 	}
 
 	/** 获取绘制的纹理 */

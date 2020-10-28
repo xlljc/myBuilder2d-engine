@@ -137,6 +137,8 @@ class World {
             if (!node.visible) return false;
             //没有实现绘制方法
             if (!node.draw) return;
+            console.log(`draw node : "${node.name}"  ---  time : "${this.thread.timeIndex}"`);
+
             let list = nodeDrawList[node.zIndex + 1000];
             if (!list) nodeDrawList[node.zIndex + 1000] = [node];
             else list.push(node);
@@ -144,7 +146,7 @@ class World {
         //调用节点的draw方法
         nodeDrawList.forEach((nodes: NodeBase[]) => {
             for (let i = 0; i < nodes.length; i++)
-                nodes[i]._$nodeDraw(World._$canvas.brush);
+                nodes[i]._$inside._$nodeDraw(World._$canvas.brush);
         });
         //调用移除子节点方法
         Tree._$callRemoveNode();

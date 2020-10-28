@@ -774,6 +774,22 @@ declare class Brush {
     drawText(position: Vector | Point, str: string): void;
 }
 /**
+ * 负责存储在其他类中需要调用的系统属性或方法
+ * NodeBase类的内部属性方法
+ */
+interface _$NodeBaseInside {
+    /** 子节点树,内部变量 */
+    _$childTree: Tree;
+    /** 父节点树,内部变量 */
+    _$parentTree: Tree | undefined;
+    /**
+     * 绘制方法,每帧调用,通过brush来画图,
+     * 该方法会在update方法之后调用,zindex越小调用就越早
+     * @param brush 画笔
+     */
+    _$nodeDraw: (brush: Brush, drawFunc?: () => void) => void;
+}
+/**
  * 节点基类
  */
 declare abstract class NodeBase implements Obj {
@@ -791,12 +807,6 @@ declare abstract class NodeBase implements Obj {
      * @param delta 上一帧执行时间
      */
     abstract update(delta: number): void;
-    /**
-     * 绘制方法,每帧调用,通过brush来画图,
-     * 该方法会在update方法之后调用,zindex越小调用就越早
-     * @param brush 画笔
-     */
-    draw: ((brush: Brush) => void) | undefined;
     /**
      * 当节点离开节点树后再该帧结束时调用,
      * 也就是调用free()方法后执行该方法
@@ -817,17 +827,21 @@ declare abstract class NodeBase implements Obj {
      */
     _$nodeUpdate(delta: number): void;
     /**
-     * 绘制方法,系统调用
-     * @param brush 笔刷
-     * @param drawFunc 重写_$nodeDraw方法时执行的绘制方法
-     */
-    _$nodeDraw(brush: Brush, drawFunc?: () => void): void;
-    /**
      * 离开节点方法,系统调用
      */
     _$nodeLeave(): void;
     /** 实例化节点 */
     protected constructor(name?: string);
+    /**
+     * 内部属性
+     */
+    _$inside: _$NodeBaseInside;
+    /**
+     * 绘制方法,每帧调用,通过brush来画图,
+     * 该方法会在update方法之后调用,zindex越小调用就越早
+     * @param brush 画笔
+     */
+    draw: ((brush: Brush) => void) | undefined;
     /** 节点名称 */
     private _$name;
     /** 节点相对于父节点的坐标 */
@@ -853,7 +867,6 @@ declare abstract class NodeBase implements Obj {
     /** 是否继承父节点的transform */
     private _$inheritTransform;
     /** 子节点树,内部变量 */
-    _$childTree: Tree;
     /** 父节点树,内部变量 */
     _$parentTree: Tree | undefined;
     get name(): string;
@@ -984,7 +997,7 @@ declare class Sprite extends Node2D {
     private _$hFrames;
     /** 当前显示帧数,下标从0开始,不会大于 (vFrames * hFrames) - 1 */
     private _$frame;
-    _$nodeDraw(brush: Brush): void;
+    constructor(name: string);
     /** 获取绘制的纹理 */
     get texture(): HTMLImageElement | undefined;
     /** 设置绘制的纹理 */

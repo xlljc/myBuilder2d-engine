@@ -168,7 +168,7 @@ class Tree {
         let index = this._$removeAllNode.indexOf(node);
         if (index !== -1) this._$removeAllNode.splice(index, 1);
         //将子节点的父节点设置为undefined
-        let child = node._$childTree.child;
+        let child = node._$inside._$childTree.child;
         // @ts-ignore
         for (let i = 0; i < child.length; i++)
             // @ts-ignore
@@ -180,7 +180,7 @@ class Tree {
     public static _$callRemoveAllNode() {
         for (let i = 0; i < this._$removeAllNode.length; i++)
             //移除所有子节点方法
-            this._$removeAllNode[i]._$childTree.removeAllChild();
+            this._$removeAllNode[i]._$inside._$childTree.removeAllChild();
         Tree._$removeAllNode = [];
     }
 

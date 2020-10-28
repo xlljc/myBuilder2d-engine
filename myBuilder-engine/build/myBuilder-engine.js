@@ -1,4 +1,5 @@
 "use strict";
+console.log("Hello builder !");
 /**
  * 静态工具类
  */
@@ -1393,6 +1394,7 @@ class World {
             //没有实现绘制方法
             if (!node.draw)
                 return;
+            console.log(`draw node : "${node.name}"  ---  time : "${this.thread.timeIndex}"`);
             let list = nodeDrawList[node.zIndex + 1000];
             if (!list)
                 nodeDrawList[node.zIndex + 1000] = [node];
@@ -1402,7 +1404,7 @@ class World {
         //调用节点的draw方法
         nodeDrawList.forEach((nodes) => {
             for (let i = 0; i < nodes.length; i++)
-                nodes[i]._$nodeDraw(World._$canvas.brush);
+                nodes[i]._$inside._$nodeDraw(World._$canvas.brush);
         });
         //调用移除子节点方法
         Tree._$callRemoveNode();
@@ -1554,11 +1556,55 @@ class NodeBase {
     /** 实例化节点 */
     constructor(name) {
         /**
+         *  负责存储在其他类中需要调用的系统属性或方法
+         */
+        this._$inside = {
+            //*********************** 内部属性 ***************
+            _$childTree: new Tree(this, []),
+            _$parentTree: undefined,
+            //*********************** 内部方法 ***************
+            _$nodeDraw: (brush, drawFunc) => {
+                let context = brush.context;
+                brush._$tempGlobalAlpha = context.globalAlpha;
+                let alpha = this.alpha;
+                let pos = this.position;
+                let nodeList = [];
+                this.eachParentUp((node) => {
+                    if (!node._$inheritTransform)
+                        return false;
+                    nodeList.push(node);
+                });
+                for (let i = nodeList.length - 1; i >= 0; i--) {
+                    let node = nodeList[i];
+                    context.translate(node.position.x, node.position.y);
+                    context.rotate(node.rotation);
+                    let tempScale = node.scale;
+                    context.scale(tempScale.x, tempScale.y);
+                    alpha *= node.alpha;
+                }
+                //如果该节点不继承父节点transform,那么重置transform
+                if (!this._$inheritTransform)
+                    brush.resetTransform();
+                context.translate(pos.x, pos.y);
+                context.rotate(this.rotation);
+                context.scale(this.scale.x, this.scale.y);
+                context.globalAlpha = alpha;
+                brush._$tempGlobalAlpha = alpha;
+                if (drawFunc)
+                    drawFunc();
+                // @ts-ignore
+                else
+                    this.draw(brush);
+                //重置画布Transform
+                brush.resetTransform();
+            },
+        };
+        //************ 属性函数 *************
+        /**
          * 绘制方法,每帧调用,通过brush来画图,
          * 该方法会在update方法之后调用,zindex越小调用就越早
          * @param brush 画笔
          */
-        //public abstract draw(brush: Brush): void;
         this.draw = undefined;
         //************ 节点属性 *************
         /** 节点名称 */
@@ -1585,8 +1631,6 @@ class NodeBase {
         this._$visible = true;
         /** 是否继承父节点的transform */
         this._$inheritTransform = true;
-        /** 子节点树,内部变量 */
-        this._$childTree = new Tree(this, []);
         this.name = name && name || "";
         this._$nodeInit();
     }
@@ -1609,46 +1653,6 @@ class NodeBase {
      */
     _$nodeUpdate(delta) {
         this.update(delta);
-    }
-    /**
-     * 绘制方法,系统调用
-     * @param brush 笔刷
-     * @param drawFunc 重写_$nodeDraw方法时执行的绘制方法
-     */
-    _$nodeDraw(brush, drawFunc) {
-        let context = brush.context;
-        brush._$tempGlobalAlpha = context.globalAlpha;
-        let alpha = this.alpha;
-        let pos = this.position;
-        let nodeList = [];
-        this.eachParentUp((node) => {
-            if (!node._$inheritTransform)
-                return false;
-            nodeList.push(node);
-        });
-        for (let i = nodeList.length - 1; i >= 0; i--) {
-            let node = nodeList[i];
-            context.translate(node.position.x, node.position.y);
-            context.rotate(node.rotation);
-            let tempScale = node.scale;
-            context.scale(tempScale.x, tempScale.y);
-            alpha *= node.alpha;
-        }
-        //如果该节点不继承父节点transform,那么重置transform
-        if (!this._$inheritTransform)
-            brush.resetTransform();
-        context.translate(pos.x, pos.y);
-        context.rotate(this.rotation);
-        context.scale(this.scale.x, this.scale.y);
-        context.globalAlpha = alpha;
-        brush._$tempGlobalAlpha = alpha;
-        if (drawFunc)
-            drawFunc();
-        // @ts-ignore
-        else
-            this.draw(brush);
-        //重置画布Transform
-        brush.resetTransform();
     }
     /**
      * 离开节点方法,系统调用
@@ -1762,7 +1766,7 @@ class NodeBase {
     }
     /** 获取子节点树 */
     get childTree() {
-        return this._$childTree;
+        return this._$inside._$childTree;
     }
     /** 获取父节点 */
     get parent() {
@@ -1808,7 +1812,7 @@ class NodeBase {
      */
     getChildren() {
         let children = [];
-        let child = this._$childTree.child;
+        let child = this._$inside._$childTree.child;
         // @ts-ignore
         for (let i = 0; i < child.length; i++)
             // @ts-ignore
@@ -1832,7 +1836,7 @@ class NodeBase {
      * @param layer 当前层级,不需要手动传该参数
      */
     eachChildren(func, index = 0, layer = 1) {
-        this._$childTree.each((tree, index, layer) => {
+        this._$inside._$childTree.each((tree, index, layer) => {
             return func(tree.node, index, layer);
         });
     }
@@ -1860,16 +1864,16 @@ class NodeBase {
      * @param node 子节点
      */
     addChild(node) {
-        this._$childTree.addChild(node._$childTree);
+        this._$inside._$childTree.addChild(node._$inside._$childTree);
         //设置父级节点树
-        node._$parentTree = this._$childTree;
+        node._$parentTree = this._$inside._$childTree;
     }
     /**
      * 移除一个子节点
      * @param node 子节点
      */
     removeChild(node) {
-        Tree._$addRemoveNode(this._$childTree, node._$childTree);
+        Tree._$addRemoveNode(this._$inside._$childTree, node._$inside._$childTree);
     }
     /**
      * 移除所有子节点
@@ -1900,8 +1904,8 @@ class Node2D extends NodeBase {
  * 精灵节点
  */
 class Sprite extends Node2D {
-    constructor() {
-        super(...arguments);
+    constructor(name) {
+        super(name);
         /** 混合的颜色 */
         this._$blend = new Color();
         /** 精灵是否居中显示,默认false */
@@ -1920,35 +1924,41 @@ class Sprite extends Node2D {
         this._$hFrames = 1;
         /** 当前显示帧数,下标从0开始,不会大于 (vFrames * hFrames) - 1 */
         this._$frame = 0;
-    }
-    _$nodeDraw(brush) {
-        super._$nodeDraw(brush, () => {
-            if (this._$texture) {
-                // imW : 图像宽度
-                // imH : 图像高度
-                // x : 图像绘制x坐标
-                // y : 图像绘制y坐标
-                let imW, imH, x, y;
-                if (!this._$regionEnable) { //判断是否要要启用区域显示
-                    imW = this._$texture.width / this._$hFrames;
-                    imH = this._$texture.height / this._$vFrames;
-                    x = this._$frame % this._$hFrames * imW;
-                    y = (this._$frame / this._$hFrames >> 0) * imH;
+        console.log("----------------");
+        console.log(this._$inside);
+        console.log(super._$inside);
+        this._$inside._$nodeDraw = (brush) => {
+            console.log("----------------");
+            console.log(this._$inside);
+            console.log(super._$inside);
+            super._$inside._$nodeDraw(brush, () => {
+                if (this._$texture) {
+                    // imW : 图像宽度
+                    // imH : 图像高度
+                    // x : 图像绘制x坐标
+                    // y : 图像绘制y坐标
+                    let imW, imH, x, y;
+                    if (!this._$regionEnable) { //判断是否要要启用区域显示
+                        imW = this._$texture.width / this._$hFrames;
+                        imH = this._$texture.height / this._$vFrames;
+                        x = this._$frame % this._$hFrames * imW;
+                        y = (this._$frame / this._$hFrames >> 0) * imH;
+                    }
+                    else {
+                        imW = this._$regionRect.w / this._$hFrames;
+                        imH = this._$regionRect.h / this._$vFrames;
+                        x = this._$regionRect.x + this._$frame % this._$hFrames * imW;
+                        y = this._$regionRect.y + (this._$frame / this._$hFrames >> 0) * imH;
+                    }
+                    if (this._$centered) //是否居中
+                        brush.context.drawImage(this._$texture, x, y, imW, imH, -imW / 2 + this._$xOffset, -imH / 2 + this._$yOffset, imW, imH);
+                    else
+                        brush.context.drawImage(this._$texture, x, y, imW, imH, this._$xOffset, this._$yOffset, imW, imH);
                 }
-                else {
-                    imW = this._$regionRect.w / this._$hFrames;
-                    imH = this._$regionRect.h / this._$vFrames;
-                    x = this._$regionRect.x + this._$frame % this._$hFrames * imW;
-                    y = this._$regionRect.y + (this._$frame / this._$hFrames >> 0) * imH;
-                }
-                if (this._$centered) //是否居中
-                    brush.context.drawImage(this._$texture, x, y, imW, imH, -imW / 2 + this._$xOffset, -imH / 2 + this._$yOffset, imW, imH);
-                else
-                    brush.context.drawImage(this._$texture, x, y, imW, imH, this._$xOffset, this._$yOffset, imW, imH);
-            }
-            // @ts-ignore
-            this.draw(brush);
-        });
+                // @ts-ignore
+                this.draw(brush);
+            });
+        };
     }
     /** 获取绘制的纹理 */
     get texture() {
@@ -2170,7 +2180,7 @@ class Tree {
         if (index !== -1)
             this._$removeAllNode.splice(index, 1);
         //将子节点的父节点设置为undefined
-        let child = node._$childTree.child;
+        let child = node._$inside._$childTree.child;
         // @ts-ignore
         for (let i = 0; i < child.length; i++)
             // @ts-ignore
@@ -2181,7 +2191,7 @@ class Tree {
     static _$callRemoveAllNode() {
         for (let i = 0; i < this._$removeAllNode.length; i++)
             //移除所有子节点方法
-            this._$removeAllNode[i]._$childTree.removeAllChild();
+            this._$removeAllNode[i]._$inside._$childTree.removeAllChild();
         Tree._$removeAllNode = [];
     }
     /** 添加离开的节点,系统内部调用 */
