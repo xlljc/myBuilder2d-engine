@@ -4,14 +4,21 @@
  */
 class Controller extends Node2D {
     start() {
+        this.position = new Vector(50, 100);
         let child1 = new MyShape("MyShape1");
         this.addChild(child1);
+        let child2 = new MyShape("MyShape2");
+        child1.addChild(child2);
+        let child3 = new MyShape("MyShape3");
+        child2.addChild(child3);
+        let child4 = new MyShape("MyShape4");
+        child3.addChild(child4);
+        child2.inheritTransform = false;
     }
     update(delta) {
-        if (Input.getKeyDown(keyList.D)) {
+        if (Input.getKeyDown(keyList.Home)) {
             World.worldTree.currentNode.childTree.printTreePretty();
-            this.free();
-            //this.parent.removeAllChild();
+            //this.free();
         }
     }
     leave() {
@@ -21,7 +28,7 @@ class Controller extends Node2D {
 class MyShape extends Sprite {
     constructor() {
         super(...arguments);
-        this.index = 0;
+        this.speed = 150;
         this.draw = function (brush) {
             brush.setColor(Color.green);
             brush.drawCircle(Input.getMousePosition(), 15);
@@ -31,17 +38,12 @@ class MyShape extends Sprite {
         let image = new Image();
         image.src = "./images/demo11_19.png";
         this.texture = image;
-        this.offset = new Vector(50);
-        this.regionEnable = true;
-        this.regionRect = new Rectangle(32, 32, 32, 32);
-        this.hFrames = 2;
-        this.vFrames = 2;
+        //this.offset = new Vector(50);
     }
-    update() {
-        this.index++;
-        if (this.index % 60 === 0) {
-            this.frame++;
-        }
+    update(delta) {
+        let px = Input.getKey(keyList.D) - Input.getKey(keyList.A);
+        let py = Input.getKey(keyList.S) - Input.getKey(keyList.W);
+        this.position = this.position.add(new Vector(px, py).normalization().multiply(delta * this.speed));
     }
 }
 window.onload = function () {

@@ -98,9 +98,9 @@ abstract class NodeBase implements Obj {
 
 				let nodeList: NodeBase[] = [];
 				this.eachParentUp((node) => {
-					if (!node._$inheritTransform) return false;
-					nodeList.push(node);
-					//if (node._$inheritTransform) nodeList.push(node);
+					//if (!node._$inheritTransform) return false;
+					//nodeList.push(node);
+					if (node._$inheritTransform) nodeList.push(node);
 				})
 				for (let i = nodeList.length - 1; i >= 0; i--) {
 					let node: NodeBase = nodeList[i];
