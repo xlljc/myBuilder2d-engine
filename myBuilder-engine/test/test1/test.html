@@ -7,10 +7,46 @@
     <title>Document</title>
     <script src="../../build/myBuilder-engine.js"></script>
     <script src="build/test.js"></script>
+    <!-- <script>
+        class aaa {
+            constructor() {
+                console.log("create aaa");
+                console.log("this : " + this.obj.str);
+            }
+            show() {
+                console.log("show() " + this.name);
+            }
+            _name = "aaa";
+            obj = {
+                str: "hello"
+            }
+            get name() {
+                return this._name;
+            }
+        }
+        class bbb extends aaa {
+            constructor() {
+                super();
+                name = "bbb";
+                console.log("create bbb");
+
+                console.log("this : " + this.obj.str);
+
+                //console.log("this : " + this.name + "\tsuper : " + super.prototype.name);
+
+                super.show();
+            }
+            getSuperStr() {
+                return super.name;
+            }
+        }
+        let inst = new bbb();
+        console.log(inst.getSuperStr());
+    </script> -->
     <style>
         canvas {
             border: 1px solid black;
-            background-color: aquamarine;
+            /* background-color: aquamarine; */
         }
     </style>
 </head>

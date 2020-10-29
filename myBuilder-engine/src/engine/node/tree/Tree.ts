@@ -1,7 +1,7 @@
 /**
  * 节点树类型
  */
-type TreeType = Tree[] | undefined;
+type TreeType = Tree[];
 
 /**
  * 节点键直对
@@ -148,7 +148,7 @@ class Tree {
         let index = this._$removeNode.indexOf(pc);
         if (index !== -1) this._$removeNode.splice(index, 1);
         //移除父节点
-        child.node._$parentTree = undefined;
+        child.node._$inside._$parentTree = undefined;
         this._$removeNode.push(pc);
     }
 
@@ -172,7 +172,7 @@ class Tree {
         // @ts-ignore
         for (let i = 0; i < child.length; i++)
             // @ts-ignore
-            child[i].node._$parentTree = undefined;
+            child[i].node._$inside._$parentTree = undefined;
         this._$removeAllNode.push(node);
     }
 

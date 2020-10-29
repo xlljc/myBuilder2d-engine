@@ -1,4 +1,10 @@
 "use strict";
+/**
+ * myBuilder2d-engine
+ *
+ * @author 小李
+ *
+ */
 console.log("Hello builder !");
 /**
  * 静态工具类
@@ -1394,7 +1400,6 @@ class World {
             //没有实现绘制方法
             if (!node.draw)
                 return;
-            console.log(`draw node : "${node.name}"  ---  time : "${this.thread.timeIndex}"`);
             let list = nodeDrawList[node.zIndex + 1000];
             if (!list)
                 nodeDrawList[node.zIndex + 1000] = [node];
@@ -1428,7 +1433,8 @@ class WorldTree {
     //private _$nodeTree: Tree = undefined;
     constructor() {
         /** 当前活动的节点,根节点 */
-        this._$currentNode = new Node2D("root");
+        this._$currentNode = new class extends Node2D {
+        }("root");
     }
     /** 获取当前活动的节点 */
     get currentNode() {
@@ -1443,6 +1449,11 @@ class WorldTree {
         this._$currentNode.removeAllChild();
         this._$currentNode.addChild(node);
     }
+}
+/**
+ * 修饰属性,不可被修改
+ */
+function final(target, name) {
 }
 /**
  * 画笔类
@@ -1558,11 +1569,9 @@ class NodeBase {
         /**
          *  负责存储在其他类中需要调用的系统属性或方法
          */
-        this._$inside = {
-            //*********************** 内部属性 ***************
+        this.__$inside = {
             _$childTree: new Tree(this, []),
             _$parentTree: undefined,
-            //*********************** 内部方法 ***************
             _$nodeDraw: (brush, drawFunc) => {
                 let context = brush.context;
                 brush._$tempGlobalAlpha = context.globalAlpha;
@@ -1573,6 +1582,7 @@ class NodeBase {
                     if (!node._$inheritTransform)
                         return false;
                     nodeList.push(node);
+                    //if (node._$inheritTransform) nodeList.push(node);
                 });
                 for (let i = nodeList.length - 1; i >= 0; i--) {
                     let node = nodeList[i];
@@ -1659,6 +1669,12 @@ class NodeBase {
      */
     _$nodeLeave() {
         this.leave();
+    }
+    /**
+     *  负责存储在其他类中需要调用的系统属性或方法,系统内部调用的
+     */
+    get _$inside() {
+        return this.__$inside;
     }
     get name() {
         return this._$name;
@@ -1770,26 +1786,41 @@ class NodeBase {
     }
     /** 获取父节点 */
     get parent() {
-        return this._$parentTree && this._$parentTree.node;
+        return this._$inside._$parentTree && this._$inside._$parentTree.node;
     }
     /** 获取父节点树 */
     get parentTree() {
-        return this._$parentTree;
+        return this._$inside._$parentTree;
     }
     //************ 节点方法 *************
-    /** 将该对象从节点树中脱离,子节点也会被调用free()方法 */
-    free() {
+    /*
+    public free(): NodeBase {
         //调用子节点的free()方法
-        let child;
-        // @ts-ignore
-        while ((child = this._$childTree.child[0]))
+        let child: Tree;
+        //@ts-ignore
+        while ((child = this._$inside._$childTree.child[0]))
             // @ts-ignore
             child.node.free();
         // @ts-ignore
-        this._$parentTree.removeChild(this._$childTree);
+        this._$parentTree.removeChild(this._$inside._$childTree);
         this._$parentTree = undefined;
         Tree._$addLeaveNode(this);
         return this;
+    }
+    */
+    /** 将该对象从节点树中脱离,子节点也会被调用free()方法 */
+    free() {
+        let child = this._$inside._$childTree.child;
+        for (let i = 0; i < child.length; i++) {
+        }
+        if (this._$inside._$parentTree) {
+            this._$inside._$parentTree.removeChild(this._$inside._$childTree);
+            this._$inside._$parentTree = undefined;
+        }
+        Tree._$addLeaveNode(this);
+        return this;
+    }
+    _$free() {
     }
     /**
      * 根据索引获取子节点
@@ -1797,15 +1828,13 @@ class NodeBase {
      */
     getChild(index) {
         let tree;
-        // @ts-ignore
-        return (tree = this._$childTree.child[index]) && tree.node || undefined;
+        return (tree = this._$inside._$childTree.child[index]) && tree.node || undefined;
     }
     /**
      * 获取子节点个数
      */
     getChildCount() {
-        // @ts-ignore
-        return this._$childTree.child.length;
+        return this._$inside._$childTree.child.length;
     }
     /**
      * 获取所有子节点对象
@@ -1813,9 +1842,7 @@ class NodeBase {
     getChildren() {
         let children = [];
         let child = this._$inside._$childTree.child;
-        // @ts-ignore
         for (let i = 0; i < child.length; i++)
-            // @ts-ignore
             children.push(child[i].node);
         return children;
     }
@@ -1845,9 +1872,9 @@ class NodeBase {
      * func函数返回false则会终止遍历
      */
     eachParentUp(func) {
-        if (!this._$parentTree || this._$parentTree.node._$name === 'root' || func(this._$parentTree.node) === false)
+        if (!this._$inside._$parentTree || this._$inside._$parentTree.node._$name === 'root' || func(this._$inside._$parentTree.node) === false)
             return;
-        this._$parentTree.node.eachParentUp(func);
+        this._$inside._$parentTree.node.eachParentUp(func);
     }
     /**
      * 向下遍历父节点,从场景根节点开始<br>
@@ -1866,7 +1893,7 @@ class NodeBase {
     addChild(node) {
         this._$inside._$childTree.addChild(node._$inside._$childTree);
         //设置父级节点树
-        node._$parentTree = this._$inside._$childTree;
+        node._$inside._$parentTree = this._$inside._$childTree;
     }
     /**
      * 移除一个子节点
@@ -1895,8 +1922,6 @@ class Node2D extends NodeBase {
     }
     update(delta) {
     }
-    /* draw(brush: Brush): void {
-    } */
     leave() {
     }
 }
@@ -1910,10 +1935,8 @@ class Sprite extends Node2D {
         this._$blend = new Color();
         /** 精灵是否居中显示,默认false */
         this._$centered = false;
-        /** 精灵x轴偏移 */
-        this._$xOffset = 0;
-        /** 精灵y轴偏移 */
-        this._$yOffset = 0;
+        /** 精灵绘制偏移 */
+        this._$offset = Vector.zero;
         /** 是否启用精灵显示区域,默认false */
         this._$regionEnable = false;
         /** 精灵显示区域 */
@@ -1924,14 +1947,13 @@ class Sprite extends Node2D {
         this._$hFrames = 1;
         /** 当前显示帧数,下标从0开始,不会大于 (vFrames * hFrames) - 1 */
         this._$frame = 0;
-        console.log("----------------");
-        console.log(this._$inside);
-        console.log(super._$inside);
+        /**
+         * Sprite节点会默认有一个空的draw事件
+         */
+        this.draw = (brush) => { };
+        let tempFunc = this._$inside._$nodeDraw;
         this._$inside._$nodeDraw = (brush) => {
-            console.log("----------------");
-            console.log(this._$inside);
-            console.log(super._$inside);
-            super._$inside._$nodeDraw(brush, () => {
+            tempFunc(brush, () => {
                 if (this._$texture) {
                     // imW : 图像宽度
                     // imH : 图像高度
@@ -1951,9 +1973,9 @@ class Sprite extends Node2D {
                         y = this._$regionRect.y + (this._$frame / this._$hFrames >> 0) * imH;
                     }
                     if (this._$centered) //是否居中
-                        brush.context.drawImage(this._$texture, x, y, imW, imH, -imW / 2 + this._$xOffset, -imH / 2 + this._$yOffset, imW, imH);
+                        brush.context.drawImage(this._$texture, x, y, imW, imH, -imW / 2 + this._$offset.x, -imH / 2 + this._$offset.y, imW, imH);
                     else
-                        brush.context.drawImage(this._$texture, x, y, imW, imH, this._$xOffset, this._$yOffset, imW, imH);
+                        brush.context.drawImage(this._$texture, x, y, imW, imH, this._$offset.x, this._$offset.y, imW, imH);
                 }
                 // @ts-ignore
                 this.draw(brush);
@@ -1968,21 +1990,13 @@ class Sprite extends Node2D {
     set texture(image) {
         this._$texture = image;
     }
-    /** 获取精灵x轴偏移*/
-    get xOffset() {
-        return this._$xOffset;
+    /** 获取精灵绘制偏移*/
+    get offset() {
+        return this._$offset;
     }
-    /** 设置精灵x轴偏移*/
-    set xOffset(value) {
-        this._$xOffset = value;
-    }
-    /** 获取精灵y轴偏移 */
-    get yOffset() {
-        return this._$yOffset;
-    }
-    /** 设置精灵y轴偏移 */
-    set yOffset(value) {
-        this._$yOffset = value;
+    /** 设置精灵绘制偏移*/
+    set offset(value) {
+        this._$offset = value;
     }
     /** 获取精灵是否居中显示,默认false */
     get centered() {
@@ -2161,7 +2175,7 @@ class Tree {
         if (index !== -1)
             this._$removeNode.splice(index, 1);
         //移除父节点
-        child.node._$parentTree = undefined;
+        child.node._$inside._$parentTree = undefined;
         this._$removeNode.push(pc);
     }
     /** 调用移除节点,系统调用 */
@@ -2184,7 +2198,7 @@ class Tree {
         // @ts-ignore
         for (let i = 0; i < child.length; i++)
             // @ts-ignore
-            child[i].node._$parentTree = undefined;
+            child[i].node._$inside._$parentTree = undefined;
         this._$removeAllNode.push(node);
     }
     /** 调用移除节点,系统调用 */

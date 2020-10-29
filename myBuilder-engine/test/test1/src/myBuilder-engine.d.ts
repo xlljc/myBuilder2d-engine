@@ -1,4 +1,10 @@
 /**
+ * myBuilder2d-engine
+ *
+ * @author 小李
+ *
+ */
+/**
  * 静态工具类
  */
 declare class Utils {
@@ -725,6 +731,10 @@ declare class WorldTree {
     set currentNode(node: NodeBase);
 }
 /**
+ * 修饰属性,不可被修改
+ */
+declare function final(target: any, name: string): void;
+/**
  * 画笔类
  */
 declare class Brush {
@@ -774,31 +784,19 @@ declare class Brush {
     drawText(position: Vector | Point, str: string): void;
 }
 /**
- * 负责存储在其他类中需要调用的系统属性或方法
- * NodeBase类的内部属性方法
- */
-interface _$NodeBaseInside {
-    /** 子节点树,内部变量 */
-    _$childTree: Tree;
-    /** 父节点树,内部变量 */
-    _$parentTree: Tree | undefined;
-    /**
-     * 绘制方法,每帧调用,通过brush来画图,
-     * 该方法会在update方法之后调用,zindex越小调用就越早
-     * @param brush 画笔
-     */
-    _$nodeDraw: (brush: Brush, drawFunc?: () => void) => void;
-}
-/**
  * 节点基类
  */
 declare abstract class NodeBase implements Obj {
     /**
-     * 初始化方法,当节点被创建时调用
+     * 初始化方法,当节点被实例化时调用
+     *
+     * 警告 : 禁止在 init() 方法中初始化属性,因为在该方中初始化的属性有可能被覆盖,初始化属性请调用 start()
      */
     abstract init(): void;
     /**
      * 当节点被其他节点指认为子节点时,会在帧结束时调用start()方法
+     *
+     * 在该方法中可以初始化类的属性
      */
     abstract start(): void;
     /**
@@ -809,7 +807,7 @@ declare abstract class NodeBase implements Obj {
     abstract update(delta: number): void;
     /**
      * 当节点离开节点树后再该帧结束时调用,
-     * 也就是调用free()方法后执行该方法
+     * 也就是调用free()方法后,在该帧结束时执行该方法
      */
     abstract leave(): void;
     /**
@@ -833,9 +831,22 @@ declare abstract class NodeBase implements Obj {
     /** 实例化节点 */
     protected constructor(name?: string);
     /**
-     * 内部属性
+     *  负责存储在其他类中需要调用的系统属性或方法,系统内部调用的
      */
-    _$inside: _$NodeBaseInside;
+    get _$inside(): {
+        /** 子节点树,内部变量 */
+        _$childTree: Tree;
+        /** 父节点树,内部变量 */
+        _$parentTree: Tree | undefined;
+        /**
+         * 系统调用的绘制方法
+         */
+        _$nodeDraw: (brush: Brush, drawFunc?: (() => void) | undefined) => void;
+    };
+    /**
+     *  负责存储在其他类中需要调用的系统属性或方法
+     */
+    private __$inside;
     /**
      * 绘制方法,每帧调用,通过brush来画图,
      * 该方法会在update方法之后调用,zindex越小调用就越早
@@ -866,9 +877,6 @@ declare abstract class NodeBase implements Obj {
     private _$visible;
     /** 是否继承父节点的transform */
     private _$inheritTransform;
-    /** 子节点树,内部变量 */
-    /** 父节点树,内部变量 */
-    _$parentTree: Tree | undefined;
     get name(): string;
     set name(name: string);
     get position(): Vector;
@@ -914,6 +922,7 @@ declare abstract class NodeBase implements Obj {
     get parentTree(): Tree | undefined;
     /** 将该对象从节点树中脱离,子节点也会被调用free()方法 */
     free(): NodeBase;
+    private _$free;
     /**
      * 根据索引获取子节点
      * @param index
@@ -966,7 +975,7 @@ declare abstract class NodeBase implements Obj {
 /**
  * 2d节点
  */
-declare class Node2D extends NodeBase {
+declare abstract class Node2D extends NodeBase {
     constructor(name?: string);
     init(): void;
     start(): void;
@@ -976,17 +985,15 @@ declare class Node2D extends NodeBase {
 /**
  * 精灵节点
  */
-declare class Sprite extends Node2D {
+declare abstract class Sprite extends Node2D {
     /** 需要绘制的纹理 */
     private _$texture;
     /** 混合的颜色 */
     private _$blend;
     /** 精灵是否居中显示,默认false */
     private _$centered;
-    /** 精灵x轴偏移 */
-    private _$xOffset;
-    /** 精灵y轴偏移 */
-    private _$yOffset;
+    /** 精灵绘制偏移 */
+    private _$offset;
     /** 是否启用精灵显示区域,默认false */
     private _$regionEnable;
     /** 精灵显示区域 */
@@ -997,19 +1004,19 @@ declare class Sprite extends Node2D {
     private _$hFrames;
     /** 当前显示帧数,下标从0开始,不会大于 (vFrames * hFrames) - 1 */
     private _$frame;
-    constructor(name: string);
+    constructor(name?: string);
+    /**
+     * Sprite节点会默认有一个空的draw事件
+     */
+    draw: (brush: Brush) => void;
     /** 获取绘制的纹理 */
     get texture(): HTMLImageElement | undefined;
     /** 设置绘制的纹理 */
     set texture(image: HTMLImageElement | undefined);
-    /** 获取精灵x轴偏移*/
-    get xOffset(): number;
-    /** 设置精灵x轴偏移*/
-    set xOffset(value: number);
-    /** 获取精灵y轴偏移 */
-    get yOffset(): number;
-    /** 设置精灵y轴偏移 */
-    set yOffset(value: number);
+    /** 获取精灵绘制偏移*/
+    get offset(): Vector;
+    /** 设置精灵绘制偏移*/
+    set offset(value: Vector);
     /** 获取精灵是否居中显示,默认false */
     get centered(): boolean;
     /** 设置精灵是否居中显示,默认false */
@@ -1038,7 +1045,7 @@ declare class Sprite extends Node2D {
 /**
  * 碰撞检测节点
  */
-declare class Collision extends Node2D {
+declare abstract class Collision extends Node2D {
     /** 是否禁用碰撞检测 */
     private _$disable;
     /** 碰撞器形状 */
@@ -1048,11 +1055,16 @@ declare class Collision extends Node2D {
  * 游戏物体基类接口
  */
 interface Obj {
+    init(): void;
+    start(): void;
+    update(delta: number): void;
+    leave(): void;
+    draw?: (brush: Brush) => void;
 }
 /**
  * 节点树类型
  */
-declare type TreeType = Tree[] | undefined;
+declare type TreeType = Tree[];
 /**
  * 节点键直对
  */

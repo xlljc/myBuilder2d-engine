@@ -137,7 +137,6 @@ class World {
             if (!node.visible) return false;
             //没有实现绘制方法
             if (!node.draw) return;
-            console.log(`draw node : "${node.name}"  ---  time : "${this.thread.timeIndex}"`);
 
             let list = nodeDrawList[node.zIndex + 1000];
             if (!list) nodeDrawList[node.zIndex + 1000] = [node];
