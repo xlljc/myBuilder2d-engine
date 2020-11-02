@@ -1,10 +1,11 @@
 "use strict";
+let mb = MyBuilder;
 /**
  * 控制器
  */
-class Controller extends Node2D {
+class Controller extends mb.Node2D {
     start() {
-        this.position = new Vector(50, 100);
+        this.position = new mb.Vector(50, 100);
         let child1 = new MyShape("MyShape1");
         this.addChild(child1);
         let child2 = new MyShape("MyShape2");
@@ -16,8 +17,8 @@ class Controller extends Node2D {
         child2.inheritTransform = false;
     }
     update(delta) {
-        if (Input.getKeyDown(keyList.Home)) {
-            World.worldTree.currentNode.childTree.printTreePretty();
+        if (mb.Input.getKeyDown(mb.keyList.Home)) {
+            mb.World.worldTree.currentNode.childTree.printTreePretty();
             //this.free();
         }
     }
@@ -25,13 +26,15 @@ class Controller extends Node2D {
         console.log("leave()", this.parent);
     }
 }
-class MyShape extends Sprite {
+class MyShape extends mb.Sprite {
     constructor() {
         super(...arguments);
         this.speed = 150;
-        this.draw = function (brush) {
-            brush.setColor(Color.green);
-            brush.drawCircle(Input.getMousePosition(), 15);
+        this.draw = (brush) => {
+            brush.setColor(mb.Color.green);
+            brush.drawCircle(mb.Input.getMousePosition(), 15);
+            brush.setColor(mb.Color.black);
+            brush.drawText(mb.Vector.zero, this.name);
         };
     }
     start() {
@@ -41,18 +44,18 @@ class MyShape extends Sprite {
         //this.offset = new Vector(50);
     }
     update(delta) {
-        let px = Input.getKey(keyList.D) - Input.getKey(keyList.A);
-        let py = Input.getKey(keyList.S) - Input.getKey(keyList.W);
-        this.position = this.position.add(new Vector(px, py).normalization().multiply(delta * this.speed));
+        let px = mb.Input.getKey(mb.keyList.D) - mb.Input.getKey(mb.keyList.A);
+        let py = mb.Input.getKey(mb.keyList.S) - mb.Input.getKey(mb.keyList.W);
+        this.position = this.position.add(new mb.Vector(px, py).normalization().multiply(delta * this.speed));
     }
 }
 window.onload = function () {
     let window = document.getElementById("main");
     if (window !== null) {
-        World.Init(window, 0, 0, 500, 350, 0);
-        World.thread.speed = 60;
-        World.worldTree.currentNode = new Controller("控制器");
-        World.canvas.color = Color.skyB1ueGrey.toHexadecimal();
-        World.canvas.imageSmoothing = false;
+        mb.World.Init(window, 0, 0, 500, 350, 0);
+        mb.World.thread.speed = 60;
+        mb.World.worldTree.currentNode = new Controller("控制器");
+        mb.World.canvas.color = mb.Color.skyB1ueGrey.toHexadecimal();
+        mb.World.canvas.imageSmoothing = false;
     }
 };
