@@ -95,25 +95,34 @@ namespace MyBuilder {
 				_$nodeDraw: (brush: Brush, drawFunc?: () => void) => {
 					let context = brush.context;
 					brush._$tempGlobalAlpha = context.globalAlpha;
-					let alpha = this.alpha;
-					let pos = this.position;
+					let alpha = 1;
 
-					let nodeList: NodeBase[] = [];
-					this.eachParentUp((node) => {
-						//if (!node._$inheritTransform) return false;
-						//nodeList.push(node);
-						if (node._$inheritTransform) nodeList.push(node);
-					})
-					for (let i = nodeList.length - 1; i >= 0; i--) {
-						let node: NodeBase = nodeList[i];
-						context.translate(node.position.x, node.position.y);
-						context.rotate(node.rotation);
-						let tempScale: Vector = node.scale;
-						context.scale(tempScale.x, tempScale.y);
-						alpha *= node.alpha;
+					//如果该节点不继承父节点transform
+					if (this._$inheritTransform) {
+						let nodeList: NodeBase[] = [];
+						this.eachParentDown((node) => {
+							if (node._$inheritTransform) nodeList.push(node);
+							else nodeList = [node];
+						});
+						for (let i = 0; i < nodeList.length; i++) {
+							let node: NodeBase = nodeList[i];
+							context.translate(node.position.x, node.position.y);
+							context.rotate(node.rotation);
+							let tempScale: Vector = node.scale;
+							context.scale(tempScale.x, tempScale.y);
+							if (alpha) alpha *= node.alpha;
+							else alpha = node.alpha;
+							if (World.thread.timeIndex === 10) {
+								console.log(node.name, node.inheritTransform);
+							}
+						}
 					}
-					//如果该节点不继承父节点transform,那么重置transform
-					if (!this._$inheritTransform) brush.resetTransform();
+					if (World.thread.timeIndex === 10) {
+						console.log(`------${this.name},${this.inheritTransform}-------`);
+					}
+
+					let pos = this.position;
+					alpha *= this._$alpha;
 					context.translate(pos.x, pos.y);
 					context.rotate(this.rotation);
 					context.scale(this.scale.x, this.scale.y);
@@ -126,7 +135,7 @@ namespace MyBuilder {
 
 					//重置画布Transform
 					brush.resetTransform();
-				},
+				}
 			}
 
 		//************ 属性函数 *************
@@ -402,7 +411,7 @@ namespace MyBuilder {
 		 * func函数返回false则会终止遍历
 		 */
 		public eachParentUp(func: (node: NodeBase) => void | boolean) {
-			if (!this._$inside._$parentTree || this._$inside._$parentTree.node._$name === 'root' || func(this._$inside._$parentTree.node) === false) return;
+			if (!this._$inside._$parentTree || this._$inside._$parentTree.node._$name === '_$root' || func(this._$inside._$parentTree.node) === false) return;
 			this._$inside._$parentTree.node.eachParentUp(func);
 		}
 

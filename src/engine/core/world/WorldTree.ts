@@ -6,7 +6,7 @@ namespace MyBuilder {
     export class WorldTree {
 
         /** 当前活动的节点,根节点 */
-        private _$currentNode: NodeBase = new class extends Node2D { }("root");
+        private _$currentNode: NodeBase = new class extends Node2D { }("_$root");
 
         /** 节点树 */
         //private _$nodeTree: Tree = undefined;

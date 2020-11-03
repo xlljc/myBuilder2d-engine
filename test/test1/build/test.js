@@ -5,7 +5,8 @@ let mb = MyBuilder;
  */
 class Controller extends mb.Node2D {
     start() {
-        this.position = new mb.Vector(50, 100);
+        mb.World.worldTree.currentNode.alpha = 0.5;
+        this.position = new mb.Vector(25, 25);
         let child1 = new MyShape("MyShape1");
         this.addChild(child1);
         let child2 = new MyShape("MyShape2");
@@ -14,7 +15,7 @@ class Controller extends mb.Node2D {
         child2.addChild(child3);
         let child4 = new MyShape("MyShape4");
         child3.addChild(child4);
-        child2.inheritTransform = false;
+        this.inheritTransform = false;
     }
     update(delta) {
         if (mb.Input.getKeyDown(mb.keyList.Home)) {
@@ -38,6 +39,7 @@ class MyShape extends mb.Sprite {
         };
     }
     start() {
+        this.alpha = 0.8;
         let image = new Image();
         image.src = "./images/demo11_19.png";
         this.texture = image;
