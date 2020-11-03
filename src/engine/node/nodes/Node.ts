@@ -94,10 +94,9 @@ namespace MyBuilder {
 				_$parentTree: undefined,
 				_$nodeDraw: (brush: Brush, drawFunc?: () => void) => {
 					let context = brush.context;
-					brush._$tempGlobalAlpha = context.globalAlpha;
+					//节点Alpha通道值
 					let alpha = 1;
-
-					//如果该节点不继承父节点transform
+					//如果该节点不继承父节点transform,就不算父节点的transform
 					if (this._$inheritTransform) {
 						let nodeList: NodeBase[] = [];
 						this.eachParentDown((node) => {
@@ -110,24 +109,15 @@ namespace MyBuilder {
 							context.rotate(node.rotation);
 							let tempScale: Vector = node.scale;
 							context.scale(tempScale.x, tempScale.y);
-							if (alpha) alpha *= node.alpha;
-							else alpha = node.alpha;
-							if (World.thread.timeIndex === 10) {
-								console.log(node.name, node.inheritTransform);
-							}
+							alpha *= node.alpha;
 						}
 					}
-					if (World.thread.timeIndex === 10) {
-						console.log(`------${this.name},${this.inheritTransform}-------`);
-					}
-
 					let pos = this.position;
 					alpha *= this._$alpha;
 					context.translate(pos.x, pos.y);
 					context.rotate(this.rotation);
 					context.scale(this.scale.x, this.scale.y);
-					context.globalAlpha = alpha;
-					brush._$tempGlobalAlpha = alpha;
+					brush._$inside._$setGlobalAlpha(alpha);
 
 					if (drawFunc) drawFunc();
 					// @ts-ignore
@@ -171,7 +161,6 @@ namespace MyBuilder {
 		private _$globalAlpha: number = 1;
 		/** 节点绘制的z轴坐标 */
 		private _$zIndex: number = 0;
-
 		/** 节点是否可见,如果为false,那么不会执行该节点以及所有子节点的draw()函数 */
 		private _$visible: boolean = true;
 
@@ -322,38 +311,17 @@ namespace MyBuilder {
 
 		//************ 节点方法 *************
 
-		/*
-		public free(): NodeBase {
-			//调用子节点的free()方法
-			let child: Tree;
-			//@ts-ignore
-			while ((child = this._$inside._$childTree.child[0]))
-				// @ts-ignore
-				child.node.free();
-			// @ts-ignore
-			this._$parentTree.removeChild(this._$inside._$childTree);
-			this._$parentTree = undefined;
-			Tree._$addLeaveNode(this);
-			return this;
-		}
-		*/
-
 		/** 将该对象从节点树中脱离,子节点也会被调用free()方法 */
 		public free(): NodeBase {
 			let child: TreeType = this._$inside._$childTree.child;
-			for (let i = 0; i < child.length; i++) {
-
-			}
+			for (let i = 0; i < child.length; i++)
+				child[i].node.free();
 			if (this._$inside._$parentTree) {
 				this._$inside._$parentTree.removeChild(this._$inside._$childTree);
 				this._$inside._$parentTree = undefined;
 			}
 			Tree._$addLeaveNode(this);
 			return this;
-		}
-
-		private _$free(): void {
-
 		}
 
 		/**

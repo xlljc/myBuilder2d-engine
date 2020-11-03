@@ -43,6 +43,21 @@ namespace MyBuilder {
                     this.h = (temp = arg[3]) !== undefined ? temp : 0;
                 }
         }
+
+        /**
+         * 获取矩形坐标的向量值
+         */
+        public get position(): Vector {
+            return new Vector(this.x, this.y);
+        }
+
+        /**
+         * 获取矩形大小的向量值
+         */
+        public get size(): Vector {
+            return new Vector(this.w, this.h);
+        }
+
         /** 比较两个矩形的值是否相等 */
         public equals(rectangle: Rectangle): boolean {
             return rectangle !== undefined && this.x === rectangle.x && this.y === rectangle.y &&

@@ -77,7 +77,7 @@ declare namespace MyBuilder {
         gray(): number;
         /** 获取该颜色的反色 */
         inverted(): Color;
-        /** 获取该颜色向#ffffff颜色过渡,参数amount (0-1)为过渡的量 */
+        /** 获取该颜色向 #ffffff 颜色过渡,参数 amount (0-1) 为过渡的量 */
         lightened(amount: number): Color;
         /** 线性插入颜色,delta值为:0-1 */
         linearInterpolate(color: Color, delta: number): Color;
@@ -189,6 +189,8 @@ declare namespace MyBuilder {
         static get violet(): Color;
         /** <p color='#9933FA'>胡紫色</p><br>十六进制 : #9933FA<br>RGB : (153,51,250) */
         static get huPurple(): Color;
+        /** <p color='#FFA500'>橙色</p><br>十六进制 : #FFA500<br>RGB : (255,165,0) */
+        static get orange(): Color;
     }
 }
 declare namespace MyBuilder {
@@ -348,6 +350,14 @@ declare namespace MyBuilder {
          * @param arg Rectangle 或 (Point1,Point2) 或 (Vector1,Vector2) 或 number(x,y,w,h) 或 不填
          */
         constructor(...arg: (number | Point | Vector | Rectangle | undefined)[]);
+        /**
+         * 获取矩形坐标的向量值
+         */
+        get position(): Vector;
+        /**
+         * 获取矩形大小的向量值
+         */
+        get size(): Vector;
         /** 比较两个矩形的值是否相等 */
         equals(rectangle: Rectangle): boolean;
         /** 转换为字符串 */
@@ -657,6 +667,7 @@ declare namespace MyBuilder {
         get timeIndex(): number;
         /** 获取上一帧逻辑代码帧运行运行时间 */
         get prevUseTime(): number;
+        /** delta 还有一点点问题,要改 */
         /**
          * 开始执行线程,如果方法func返回false,线程结束
          * @param func 执行方法
@@ -678,24 +689,36 @@ declare namespace MyBuilder {
         private readonly _$canvasElement;
         /** 当前画布的笔刷 */
         private readonly _$brush;
-        /** 画布矩形对象 */
-        private readonly _$rectangle;
+        /** 画布矩形对象,画布区域 */
+        private _$area;
         /** 画布z轴索引 */
         private _$zIndex;
         /** 启用图像平滑显示 */
         private _$imageSmoothing;
         /** 画布背景颜色 */
         private _$color;
-        constructor(rectangle: Rectangle);
+        /** 画布全局缩放 */
+        private _$globalScale;
+        /** 画布全局角度 */
+        private _$globalRotation;
+        /** 画布全局position */
+        private _$globalPosition;
+        /** 画布全局透明度 */
+        private _$globalAlpha;
+        constructor(area: Rectangle);
         /** 获得笔刷 */
         get brush(): Brush;
         /** 获取画布原dom对象 */
         get canvasElement(): HTMLCanvasElement;
+        /** 获取画布区域 */
+        get area(): Rectangle;
+        /** 设置画布区域 */
+        set area(value: Rectangle);
         /** 获取z轴索引,不会小于0! */
         get zIndex(): number;
         /** 设置z轴索引,不能小于0! */
         set zIndex(value: number);
-        /** 清空画布 */
+        /** 清空画布,参数rectangle不填的话就会清理全屏 */
         clear(rectangle?: Rectangle): void;
         /** 获取是否启用图像平滑显示 */
         get imageSmoothing(): boolean;
@@ -705,6 +728,22 @@ declare namespace MyBuilder {
         get color(): string;
         /** 设置画布背景颜色 */
         set color(value: string);
+        /** 设置画布全局缩放 */
+        set globalScale(value: Vector);
+        /** 获取画布全局缩放 */
+        get globalScale(): Vector;
+        /** 设置画布全局角度,弧度制 */
+        set globalRotation(value: number);
+        /** 获取画布全局角度,弧度制 */
+        get globalRotation(): number;
+        /** 设置画布全局position */
+        set globalPosition(value: Vector);
+        /** 获取画布全局position */
+        get globalPosition(): Vector;
+        /** 设置画布全局透明度 (0-1) */
+        set globalAlpha(value: number);
+        /** 获取画布全局透明度 (0-1) */
+        get globalAlpha(): number;
     }
 }
 declare namespace MyBuilder {
@@ -770,14 +809,33 @@ declare namespace MyBuilder {
 }
 declare namespace MyBuilder {
     /**
+     * 线程调试对象,仅供开发使用
+     */
+    class TestThread {
+        /**
+         * 执行delta值测试
+         * 测试 delta 值是否正确
+         */
+        static testDelta(): void;
+    }
+}
+declare namespace MyBuilder {
+    /**
      * 画笔类
      */
     class Brush {
+        /**
+         *  负责存储在其他类中需要调用的系统属性或方法,系统内部调用的
+         */
+        get _$inside(): {
+            /** 记录当前对象的绘制alpha值,系统内部变量 */
+            _$tempGlobalAlpha: number;
+            /**设置当前对象的绘制alpha值,系统内部变量 */
+            _$setGlobalAlpha: (value: number) => void;
+        };
+        private __$inside;
         /** 画布的上下文对象 */
         private readonly _$context2D;
-        /** 记录当前对象的全局alpha值,系统内部变量 */
-        _$tempGlobalAlpha: number;
-        private static vector;
         /**
          * 创建画笔类
          * @param context 当前层的画布的上下文对象
@@ -787,7 +845,7 @@ declare namespace MyBuilder {
          * 获取画布的上下文对象,<br>
          */
         get context(): CanvasRenderingContext2D;
-        /** 重置画布坐标,缩放,旋转,让画布transform属性回到默认值 */
+        /** 重置画布坐标,缩放,旋转,透明度,让画布transform属性回到默认值 */
         resetTransform(): void;
         /** 改变画布的初始坐标 */
         translate(position: Vector): void;
@@ -959,7 +1017,6 @@ declare namespace MyBuilder {
         get parentTree(): Tree | undefined;
         /** 将该对象从节点树中脱离,子节点也会被调用free()方法 */
         free(): NodeBase;
-        private _$free;
         /**
          * 根据索引获取子节点
          * @param index

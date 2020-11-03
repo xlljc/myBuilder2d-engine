@@ -20,6 +20,7 @@
       "../src/engine/core/world/World.ts",
       "../src/engine/core/world/WorldTree.ts",
       "../src/engine/decorator/final.ts",
+      "../src/engine/developTest/TestThread.ts",
       "../src/engine/node/Brush.ts",
       "../src/engine/node/nodes/Node.ts",
       "../src/engine/node/nodes/NodeObj.ts",
@@ -35,7 +36,7 @@
         },
         {
           "pos": 15,
-          "end": 83060,
+          "end": 87551,
           "kind": "text"
         }
       ],
@@ -63,7 +64,7 @@
       "sections": [
         {
           "pos": 0,
-          "end": 36932,
+          "end": 38562,
           "kind": "text"
         }
       ]

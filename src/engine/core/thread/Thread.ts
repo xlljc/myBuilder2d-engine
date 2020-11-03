@@ -62,6 +62,7 @@ namespace MyBuilder {
             return this._$prevUseTime;
         }
 
+        /** delta 还有一点点问题,要改 */
         /**
          * 开始执行线程,如果方法func返回false,线程结束
          * @param func 执行方法

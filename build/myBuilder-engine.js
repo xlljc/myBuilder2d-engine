@@ -169,7 +169,7 @@ var MyBuilder;
         inverted() {
             return new Color(255 - this._$r, 255 - this._$g, 255 - this._$b, this._$a);
         }
-        /** 获取该颜色向#ffffff颜色过渡,参数amount (0-1)为过渡的量 */
+        /** 获取该颜色向 #ffffff 颜色过渡,参数 amount (0-1) 为过渡的量 */
         lightened(amount) {
             return new Color(this._$r + (255 - this._$r) * amount, this._$g + (255 - this._$g) * amount, this._$b + (255 - this._$b) * amount, this._$a);
         }
@@ -418,6 +418,10 @@ var MyBuilder;
         /** <p color='#9933FA'>胡紫色</p><br>十六进制 : #9933FA<br>RGB : (153,51,250) */
         static get huPurple() {
             return new Color(153, 51, 250);
+        }
+        /** <p color='#FFA500'>橙色</p><br>十六进制 : #FFA500<br>RGB : (255,165,0) */
+        static get orange() {
+            return new Color(255, 165, 0);
         }
     }
     MyBuilder.Color = Color;
@@ -777,6 +781,18 @@ var MyBuilder;
                     // @ts-ignore
                     this.h = (temp = arg[3]) !== undefined ? temp : 0;
                 }
+        }
+        /**
+         * 获取矩形坐标的向量值
+         */
+        get position() {
+            return new MyBuilder.Vector(this.x, this.y);
+        }
+        /**
+         * 获取矩形大小的向量值
+         */
+        get size() {
+            return new MyBuilder.Vector(this.w, this.h);
         }
         /** 比较两个矩形的值是否相等 */
         equals(rectangle) {
@@ -1221,6 +1237,7 @@ var MyBuilder;
         get prevUseTime() {
             return this._$prevUseTime;
         }
+        /** delta 还有一点点问题,要改 */
         /**
          * 开始执行线程,如果方法func返回false,线程结束
          * @param func 执行方法
@@ -1270,22 +1287,29 @@ var MyBuilder;
      * 画布类
      */
     class Canvas {
-        //**********************记得填坑:画布缩放
         //*********************************************************
-        constructor(rectangle) {
+        constructor(area) {
             /** 画布z轴索引 */
             this._$zIndex = 1000;
             /** 启用图像平滑显示 */
             this._$imageSmoothing = true;
             /** 画布背景颜色 */
             this._$color = "#000";
-            this._$rectangle = rectangle;
+            /** 画布全局缩放 */
+            this._$globalScale = MyBuilder.Vector.one;
+            /** 画布全局角度 */
+            this._$globalRotation = 0;
+            /** 画布全局position */
+            this._$globalPosition = MyBuilder.Vector.zero;
+            /** 画布全局透明度 */
+            this._$globalAlpha = 1;
+            this._$area = area;
             this._$canvasElement = document.createElement("canvas");
             this._$canvasElement.innerHTML = "您的浏览器不支持canvas! 请更换浏览器!";
-            this._$canvasElement.style.marginLeft = rectangle.x + "px";
-            this._$canvasElement.style.marginTop = rectangle.y + "px";
-            this._$canvasElement.width = rectangle.w;
-            this._$canvasElement.height = rectangle.h;
+            this._$canvasElement.style.marginLeft = area.x + "px";
+            this._$canvasElement.style.marginTop = area.y + "px";
+            this._$canvasElement.width = area.w;
+            this._$canvasElement.height = area.h;
             this._$canvasElement.style.position = "absolute";
             // @ts-ignore
             this._$brush = new MyBuilder.Brush(this._$canvasElement.getContext("2d"));
@@ -1298,6 +1322,18 @@ var MyBuilder;
         get canvasElement() {
             return this._$canvasElement;
         }
+        /** 获取画布区域 */
+        get area() {
+            return this._$area;
+        }
+        /** 设置画布区域 */
+        set area(value) {
+            this._$area = value;
+            this._$canvasElement.style.marginLeft = value.x + "px";
+            this._$canvasElement.style.marginTop = value.y + "px";
+            this._$canvasElement.width = value.w;
+            this._$canvasElement.height = value.h;
+        }
         /** 获取z轴索引,不会小于0! */
         get zIndex() {
             if (this._$zIndex < 0)
@@ -1309,12 +1345,23 @@ var MyBuilder;
             this._$zIndex = value >= 0 && value || 0;
             this._$canvasElement.style.zIndex = this._$zIndex.toString();
         }
-        /** 清空画布 */
+        /** 清空画布,参数rectangle不填的话就会清理全屏 */
         clear(rectangle) {
-            if (rectangle)
-                this._$brush.context.clearRect(0, 0, rectangle.w, rectangle.h);
-            else
-                this._$brush.context.clearRect(0, 0, this._$rectangle.w, this._$rectangle.h);
+            //如果用到了全局旋转
+            if (this._$globalRotation) {
+                this._$brush.context.rotate(-this._$globalRotation);
+                if (rectangle)
+                    this._$brush.context.clearRect(-this._$globalPosition.x, -this._$globalPosition.y, rectangle.w, rectangle.h);
+                else
+                    this._$brush.context.clearRect(-this._$globalPosition.x, -this._$globalPosition.y, this._$area.w, this._$area.h);
+                this._$brush.context.rotate(this._$globalRotation);
+            }
+            else {
+                if (rectangle)
+                    this._$brush.context.clearRect(-this._$globalPosition.x, -this._$globalPosition.y, rectangle.w, rectangle.h);
+                else
+                    this._$brush.context.clearRect(-this._$globalPosition.x, -this._$globalPosition.y, this._$area.w, this._$area.h);
+            }
         }
         /** 获取是否启用图像平滑显示 */
         get imageSmoothing() {
@@ -1333,6 +1380,38 @@ var MyBuilder;
         set color(value) {
             this._$color = value;
             this._$canvasElement.style.backgroundColor = value;
+        }
+        /** 设置画布全局缩放 */
+        set globalScale(value) {
+            this._$globalScale = value;
+        }
+        /** 获取画布全局缩放 */
+        get globalScale() {
+            return this._$globalScale;
+        }
+        /** 设置画布全局角度,弧度制 */
+        set globalRotation(value) {
+            this._$globalRotation = value;
+        }
+        /** 获取画布全局角度,弧度制 */
+        get globalRotation() {
+            return this._$globalRotation;
+        }
+        /** 设置画布全局position */
+        set globalPosition(value) {
+            this._$globalPosition = value;
+        }
+        /** 获取画布全局position */
+        get globalPosition() {
+            return this._$globalPosition;
+        }
+        /** 设置画布全局透明度 (0-1) */
+        set globalAlpha(value) {
+            this._$globalAlpha = value;
+        }
+        /** 获取画布全局透明度 (0-1) */
+        get globalAlpha() {
+            return this._$globalAlpha;
         }
     }
     MyBuilder.Canvas = Canvas;
@@ -1519,6 +1598,55 @@ var MyBuilder;
 var MyBuilder;
 (function (MyBuilder) {
     /**
+     * 线程调试对象,仅供开发使用
+     */
+    class TestThread {
+        /**
+         * 执行delta值测试
+         * 测试 delta 值是否正确
+         */
+        static testDelta() {
+            let testNode = new class extends MyBuilder.Node2D {
+                constructor() {
+                    super(...arguments);
+                    this.area = MyBuilder.World.canvas.area;
+                    this.startTime = 0;
+                    this.width = 0;
+                    this.value = 0;
+                    this.speed = 20;
+                    this.draw = (brush) => {
+                        brush.setColor(MyBuilder.Color.orange);
+                        brush.drawFillRect(this.area.position, new MyBuilder.Vector(this.value, 30));
+                        brush.setColor(MyBuilder.Color.green);
+                        brush.drawRect(this.area.position, new MyBuilder.Vector(this.width, 30));
+                    };
+                }
+                start() {
+                    this.inheritTransform = false;
+                    this.startTime = Date.now();
+                    this.width = this.area.w;
+                    console.log("TestThread => testDelta : start !");
+                }
+                update(delta) {
+                    this.value += this.speed * delta;
+                    if (this.value >= this.width) {
+                        this.free();
+                    }
+                }
+                leave() {
+                    console.log("TestThread => testDelta : ideal time --- " + (this.width / this.speed));
+                    console.log("TestThread => testDelta : user time --- " + ((Date.now() - this.startTime) / 1000));
+                    console.log("TestThread => testDelta : end !");
+                }
+            }("testDelta");
+            MyBuilder.World.worldTree.currentNode.addChild(testNode);
+        }
+    }
+    MyBuilder.TestThread = TestThread;
+})(MyBuilder || (MyBuilder = {}));
+var MyBuilder;
+(function (MyBuilder) {
+    /**
      * 画笔类
      */
     class Brush {
@@ -1527,9 +1655,20 @@ var MyBuilder;
          * @param context 当前层的画布的上下文对象
          */
         constructor(context) {
-            /** 记录当前对象的全局alpha值,系统内部变量 */
-            this._$tempGlobalAlpha = 1;
+            this.__$inside = {
+                _$tempGlobalAlpha: 1,
+                _$setGlobalAlpha: (value) => {
+                    //基于全局Alpha通道
+                    this._$context2D.globalAlpha = this._$inside._$tempGlobalAlpha = MyBuilder.World.canvas.globalAlpha * value;
+                }
+            };
             this._$context2D = context;
+        }
+        /**
+         *  负责存储在其他类中需要调用的系统属性或方法,系统内部调用的
+         */
+        get _$inside() {
+            return this.__$inside;
         }
         /**
          * 获取画布的上下文对象,<br>
@@ -1537,8 +1676,9 @@ var MyBuilder;
         get context() {
             return this._$context2D;
         }
-        /** 重置画布坐标,缩放,旋转,让画布transform属性回到默认值 */
+        /** 重置画布坐标,缩放,旋转,透明度,让画布transform属性回到默认值 */
         resetTransform() {
+            //this._$context2D.setTransform(1, 0, 0, 1, 0, 0);
             /*
              a	水平缩放
              b	水平倾斜
@@ -1547,7 +1687,14 @@ var MyBuilder;
              e	水平偏移
              f	垂直偏移
              */
-            this._$context2D.setTransform(1, 0, 0, 1, 0, 0);
+            //全局缩放与偏移
+            let scale = MyBuilder.World.canvas.globalScale;
+            let pos = MyBuilder.World.canvas.globalPosition;
+            this._$context2D.setTransform(scale.x, 0, 0, scale.y, pos.x, pos.y);
+            //全局旋转,弧度制
+            this._$context2D.rotate(MyBuilder.World.canvas.globalRotation);
+            //全局透明度 (0-1)
+            this._$inside._$setGlobalAlpha(1);
         }
         /** 改变画布的初始坐标 */
         translate(position) {
@@ -1563,7 +1710,7 @@ var MyBuilder;
         }
         /** 设置绘制的alpha值,(0-1) */
         alpha(alpha) {
-            this._$context2D.globalAlpha = this._$tempGlobalAlpha * (alpha < 0 ? 0 : alpha > 1 ? 1 : alpha);
+            this._$context2D.globalAlpha = MyBuilder.World.canvas.globalAlpha * this._$inside._$tempGlobalAlpha * (alpha < 0 ? 0 : alpha > 1 ? 1 : alpha);
         }
         /** 设置画笔颜色 */
         setColor(color) {
@@ -1622,7 +1769,6 @@ var MyBuilder;
             this._$context2D.fillText(str, position.x, position.y);
         }
     }
-    Brush.vector = new MyBuilder.Point();
     MyBuilder.Brush = Brush;
 })(MyBuilder || (MyBuilder = {}));
 var MyBuilder;
@@ -1641,9 +1787,9 @@ var MyBuilder;
                 _$parentTree: undefined,
                 _$nodeDraw: (brush, drawFunc) => {
                     let context = brush.context;
-                    brush._$tempGlobalAlpha = context.globalAlpha;
+                    //节点Alpha通道值
                     let alpha = 1;
-                    //如果该节点不继承父节点transform
+                    //如果该节点不继承父节点transform,就不算父节点的transform
                     if (this._$inheritTransform) {
                         let nodeList = [];
                         this.eachParentDown((node) => {
@@ -1658,25 +1804,15 @@ var MyBuilder;
                             context.rotate(node.rotation);
                             let tempScale = node.scale;
                             context.scale(tempScale.x, tempScale.y);
-                            if (alpha)
-                                alpha *= node.alpha;
-                            else
-                                alpha = node.alpha;
-                            if (MyBuilder.World.thread.timeIndex === 10) {
-                                console.log(node.name, node.inheritTransform);
-                            }
+                            alpha *= node.alpha;
                         }
-                    }
-                    if (MyBuilder.World.thread.timeIndex === 10) {
-                        console.log(`------${this.name},${this.inheritTransform}-------`);
                     }
                     let pos = this.position;
                     alpha *= this._$alpha;
                     context.translate(pos.x, pos.y);
                     context.rotate(this.rotation);
                     context.scale(this.scale.x, this.scale.y);
-                    context.globalAlpha = alpha;
-                    brush._$tempGlobalAlpha = alpha;
+                    brush._$inside._$setGlobalAlpha(alpha);
                     if (drawFunc)
                         drawFunc();
                     // @ts-ignore
@@ -1870,34 +2006,17 @@ var MyBuilder;
             return this._$inside._$parentTree;
         }
         //************ 节点方法 *************
-        /*
-        public free(): NodeBase {
-            //调用子节点的free()方法
-            let child: Tree;
-            //@ts-ignore
-            while ((child = this._$inside._$childTree.child[0]))
-                // @ts-ignore
-                child.node.free();
-            // @ts-ignore
-            this._$parentTree.removeChild(this._$inside._$childTree);
-            this._$parentTree = undefined;
-            Tree._$addLeaveNode(this);
-            return this;
-        }
-        */
         /** 将该对象从节点树中脱离,子节点也会被调用free()方法 */
         free() {
             let child = this._$inside._$childTree.child;
-            for (let i = 0; i < child.length; i++) {
-            }
+            for (let i = 0; i < child.length; i++)
+                child[i].node.free();
             if (this._$inside._$parentTree) {
                 this._$inside._$parentTree.removeChild(this._$inside._$childTree);
                 this._$inside._$parentTree = undefined;
             }
             MyBuilder.Tree._$addLeaveNode(this);
             return this;
-        }
-        _$free() {
         }
         /**
          * 根据索引获取子节点

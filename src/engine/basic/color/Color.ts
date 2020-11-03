@@ -145,7 +145,7 @@ namespace MyBuilder {
             return new Color(255 - this._$r, 255 - this._$g, 255 - this._$b, this._$a);
         }
 
-        /** 获取该颜色向#ffffff颜色过渡,参数amount (0-1)为过渡的量 */
+        /** 获取该颜色向 #ffffff 颜色过渡,参数 amount (0-1) 为过渡的量 */
         public lightened(amount: number): Color {
             return new Color(this._$r + (255 - this._$r) * amount,
                 this._$g + (255 - this._$g) * amount,
@@ -411,6 +411,10 @@ namespace MyBuilder {
         /** <p color='#9933FA'>胡紫色</p><br>十六进制 : #9933FA<br>RGB : (153,51,250) */
         public static get huPurple(): Color {
             return new Color(153, 51, 250);
+        }
+        /** <p color='#FFA500'>橙色</p><br>十六进制 : #FFA500<br>RGB : (255,165,0) */
+        public static get orange(): Color {
+            return new Color(255, 165, 0);
         }
     }
 }

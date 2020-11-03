@@ -11,8 +11,8 @@ namespace MyBuilder {
         /** 当前画布的笔刷 */
         private readonly _$brush: Brush;
 
-        /** 画布矩形对象 */
-        private readonly _$rectangle: Rectangle;
+        /** 画布矩形对象,画布区域 */
+        private _$area: Rectangle;
 
         /** 画布z轴索引 */
         private _$zIndex: number = 1000;
@@ -23,18 +23,28 @@ namespace MyBuilder {
         /** 画布背景颜色 */
         private _$color: string = "#000";
 
-        //**********************记得填坑:画布缩放
+        /** 画布全局缩放 */
+        private _$globalScale: Vector = Vector.one;
+
+        /** 画布全局角度 */
+        private _$globalRotation: number = 0;
+
+        /** 画布全局position */
+        private _$globalPosition: Vector = Vector.zero;
+
+        /** 画布全局透明度 */
+        private _$globalAlpha: number = 1;
 
         //*********************************************************
 
-        constructor(rectangle: Rectangle) {
-            this._$rectangle = rectangle;
+        constructor(area: Rectangle) {
+            this._$area = area;
             this._$canvasElement = document.createElement("canvas");
             this._$canvasElement.innerHTML = "您的浏览器不支持canvas! 请更换浏览器!"
-            this._$canvasElement.style.marginLeft = rectangle.x + "px";
-            this._$canvasElement.style.marginTop = rectangle.y + "px";
-            this._$canvasElement.width = rectangle.w;
-            this._$canvasElement.height = rectangle.h;
+            this._$canvasElement.style.marginLeft = area.x + "px";
+            this._$canvasElement.style.marginTop = area.y + "px";
+            this._$canvasElement.width = area.w;
+            this._$canvasElement.height = area.h;
             this._$canvasElement.style.position = "absolute";
             // @ts-ignore
             this._$brush = new Brush(this._$canvasElement.getContext("2d"));
@@ -50,6 +60,20 @@ namespace MyBuilder {
             return this._$canvasElement;
         }
 
+        /** 获取画布区域 */
+        public get area(): Rectangle {
+            return this._$area;
+        }
+
+        /** 设置画布区域 */
+        public set area(value: Rectangle) {
+            this._$area = value;
+            this._$canvasElement.style.marginLeft = value.x + "px";
+            this._$canvasElement.style.marginTop = value.y + "px";
+            this._$canvasElement.width = value.w;
+            this._$canvasElement.height = value.h;
+        }
+
         /** 获取z轴索引,不会小于0! */
         public get zIndex(): number {
             if (this._$zIndex < 0) this._$zIndex = 0;
@@ -62,12 +86,22 @@ namespace MyBuilder {
             this._$canvasElement.style.zIndex = this._$zIndex.toString();
         }
 
-        /** 清空画布 */
+        /** 清空画布,参数rectangle不填的话就会清理全屏 */
         public clear(rectangle?: Rectangle) {
-            if (rectangle)
-                this._$brush.context.clearRect(0, 0, rectangle.w, rectangle.h);
-            else
-                this._$brush.context.clearRect(0, 0, this._$rectangle.w, this._$rectangle.h);
+            //如果用到了全局旋转
+            if (this._$globalRotation) {
+                this._$brush.context.rotate(-this._$globalRotation);
+                if (rectangle)
+                    this._$brush.context.clearRect(-this._$globalPosition.x, -this._$globalPosition.y, rectangle.w, rectangle.h);
+                else
+                    this._$brush.context.clearRect(-this._$globalPosition.x, -this._$globalPosition.y, this._$area.w, this._$area.h);
+                this._$brush.context.rotate(this._$globalRotation);
+            } else {
+                if (rectangle)
+                    this._$brush.context.clearRect(-this._$globalPosition.x, -this._$globalPosition.y, rectangle.w, rectangle.h);
+                else
+                    this._$brush.context.clearRect(-this._$globalPosition.x, -this._$globalPosition.y, this._$area.w, this._$area.h);
+            }
         }
 
         /** 获取是否启用图像平滑显示 */
@@ -91,6 +125,47 @@ namespace MyBuilder {
             this._$color = value;
             this._$canvasElement.style.backgroundColor = value;
         }
+
+        /** 设置画布全局缩放 */
+        public set globalScale(value: Vector) {
+            this._$globalScale = value;
+        }
+
+        /** 获取画布全局缩放 */
+        public get globalScale(): Vector {
+            return this._$globalScale;
+        }
+
+        /** 设置画布全局角度,弧度制 */
+        public set globalRotation(value: number) {
+            this._$globalRotation = value;
+        }
+
+        /** 获取画布全局角度,弧度制 */
+        public get globalRotation(): number {
+            return this._$globalRotation;
+        }
+
+        /** 设置画布全局position */
+        public set globalPosition(value: Vector) {
+            this._$globalPosition = value;
+        }
+
+        /** 获取画布全局position */
+        public get globalPosition(): Vector {
+            return this._$globalPosition;
+        }
+
+        /** 设置画布全局透明度 (0-1) */
+        public set globalAlpha(value: number) {
+            this._$globalAlpha = value;
+        }
+
+        /** 获取画布全局透明度 (0-1) */
+        public get globalAlpha(): number {
+            return this._$globalAlpha;
+        }
+
     }
 
 }

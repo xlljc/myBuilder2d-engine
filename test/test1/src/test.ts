@@ -5,26 +5,29 @@ let mb = MyBuilder;
  */
 class Controller extends mb.Node2D {
     start() {
-        mb.World.worldTree.currentNode.alpha = 0.5;
+        let canvas = mb.World.canvas;
+        //canvas.globalPosition = new mb.Vector(50, 150);
+        //canvas.globalRotation = mb.Utils.toRadians(30);
+        canvas.globalAlpha = 1;
+        //canvas.globalScale = mb.Vector.one.multiply(3);
 
-        this.position = new mb.Vector(25, 25);
+        //this.position = new mb.Vector(25, 25);
 
-        let child1 = new MyShape("MyShape1");
-        this.addChild(child1);
-        let child2 = new MyShape("MyShape2");
-        child1.addChild(child2);
-
-        let child3 = new MyShape("MyShape3");
-        child2.addChild(child3);
-        let child4 = new MyShape("MyShape4");
-        child3.addChild(child4);
-        this.inheritTransform = false;
+        let temp: MyBuilder.Node2D = this;
+        for (let i = 0; i < 1000; i++) {
+            let childTemp = new MyShape("MyShape" + i);
+            temp.addChild(childTemp);
+            temp = childTemp;
+        }
+        //mb.TestThread.testDelta();
+        //this.inheritTransform = false;
     }
     update(delta: number) {
         if (mb.Input.getKeyDown(mb.keyList.Home)) {
             mb.World.worldTree.currentNode.childTree.printTreePretty();
             //this.free();
         }
+        mb.World.canvas.globalScale = mb.World.canvas.globalScale.add(delta * mb.Input.getMouseWheel());
     }
     leave() {
         console.log("leave()", this.parent);
@@ -36,7 +39,7 @@ class MyShape extends mb.Sprite {
     speed = 150;
 
     start() {
-        this.alpha = 0.8;
+        this.alpha = 0.98;
         let image = new Image();
         image.src = "./images/demo11_19.png";
         this.texture = image;
@@ -49,6 +52,9 @@ class MyShape extends mb.Sprite {
 
     }
     draw = (brush: MyBuilder.Brush) => {
+        if (this.name === "MyShape1") {
+            brush.alpha(0.5);
+        }
         brush.setColor(mb.Color.green);
         brush.drawCircle(mb.Input.getMousePosition(), 15);
         brush.setColor(mb.Color.black);
@@ -60,10 +66,14 @@ class MyShape extends mb.Sprite {
 window.onload = function () {
     let window = document.getElementById("main");
     if (window !== null) {
-        mb.World.Init(window, 0, 0, 500, 350, 0);
+        mb.World.Init(window, 0, 0, 700, 420, 0);
         mb.World.thread.speed = 60;
         mb.World.worldTree.currentNode = new Controller("控制器");
         mb.World.canvas.color = mb.Color.skyB1ueGrey.toHexadecimal();
         mb.World.canvas.imageSmoothing = false;
     }
+    let doc = document.getElementById("fps-box");
+    setInterval(function () {
+        doc.innerText = "fps : " + mb.World.thread.fps + "  ---  delta : " + mb.World.thread.delta;
+    }, 200);
 }
