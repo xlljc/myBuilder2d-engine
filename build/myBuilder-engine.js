@@ -344,7 +344,7 @@ var MyBuilder;
             return new Color(255, 255, 255);
         }
         /** <p color='#F0FFFF'>天蓝灰</p><br>十六进制 : #F0FFFF<br>RGB : (202,235,216) */
-        static get skyB1ueGrey() {
+        static get skyBlueGrey() {
             return new Color(202, 235, 216);
         }
         /** <p color='#CCCCCC'>灰色</p><br>十六进制 : #CCCCCC<br>RGB : (192,192,192) */
@@ -693,8 +693,8 @@ var MyBuilder;
      */
     class Circle {
         /**
-         * 创建一个圆形,参数为 Circle 或 (Point,radius) 或 (Vector,radius) 或 number(x,y,r) 或 不填
-         * @param arg Circle 或 (Point,radius) 或 (Vector,radius) 或 number(x,y,r) 或 不填
+         * 创建一个圆形,参数为 Circle 对象 或 (Point,radius) 或 (Vector,radius) 或 number(x,y,radius) 或 不填
+         * @param arg Circle 对象 或 (Point,radius) 或 (Vector,radius) 或 number(x,y,radius) 或 不填
          */
         constructor(...arg) {
             /** 坐标点:x */
@@ -724,6 +724,12 @@ var MyBuilder;
                     this.r = (temp = arg[2]) !== undefined ? temp : 0;
                 }
         }
+        /**
+         * 获取矩形坐标的向量值
+         */
+        get position() {
+            return new MyBuilder.Vector(this.x, this.y);
+        }
         /** 比较两个圆形的值是否相等 */
         equals(circle) {
             return circle !== undefined && this.x === circle.x && this.y === circle.y && this.r === circle.r;
@@ -731,6 +737,10 @@ var MyBuilder;
         /** 转换为字符串 */
         toString() {
             return "point : {x : " + this.x + ", y : " + this.y + ", r : " + this.r + "}";
+        }
+        //圆与圆的碰撞检测
+        isColl(other) {
+            return (this.x - other.x) * (this.x - other.x) + (this.y - other.y) * (this.y - other.y) < (this.r + other.r) * (this.r + other.r);
         }
     }
     MyBuilder.Circle = Circle;
@@ -1514,33 +1524,50 @@ var MyBuilder;
         static updateFunc(delta) {
             //更新按键
             World._$input._$beforeUpdate();
-            //遍历节点树,调用update方法
-            World._$worldTree.currentNode && this._$worldTree.currentNode.childTree.each((tree) => {
-                tree.node._$nodeUpdate(delta);
-            });
-            //清理画布
-            World._$canvas.clear();
-            //遍历节点树,排序draw方法
-            let nodeDrawList = [];
-            World._$worldTree.currentNode && this._$worldTree.currentNode.childTree.each((tree) => {
-                let node = tree.node;
-                //不可见的
-                if (!node.visible)
-                    return false;
-                //没有实现绘制方法
-                if (!node.draw)
-                    return;
-                let list = nodeDrawList[node.zIndex + 1000];
-                if (!list)
-                    nodeDrawList[node.zIndex + 1000] = [node];
-                else
-                    list.push(node);
-            });
-            //调用节点的draw方法
-            nodeDrawList.forEach((nodes) => {
-                for (let i = 0; i < nodes.length; i++)
-                    nodes[i]._$inside._$nodeDraw(World._$canvas.brush);
-            });
+            //如果节点树没有根节点,那么不执行后面的代码
+            if (World._$worldTree.currentNode) {
+                //遍历节点树,调用update方法
+                this._$worldTree.currentNode.childTree.each((tree) => {
+                    tree.node._$insideNodeBase._$nodeUpdate(delta);
+                });
+                //清理画布
+                World._$canvas.clear();
+                //遍历节点树,排序draw方法
+                let nodeDrawList = [];
+                this._$worldTree.currentNode.childTree.each((tree) => {
+                    let node = tree.node;
+                    //不可见的
+                    if (!node.visible)
+                        return false;
+                    //没有实现绘制方法
+                    if (!node.draw)
+                        return;
+                    let list = nodeDrawList[node.zIndex + 1000];
+                    if (!list)
+                        nodeDrawList[node.zIndex + 1000] = [node];
+                    else
+                        list.push(node);
+                });
+                //调用节点的draw方法
+                nodeDrawList.forEach((nodes) => {
+                    for (let i = 0; i < nodes.length; i++)
+                        nodes[i]._$insideNodeBase._$nodeDraw(World._$canvas.brush);
+                });
+                //碰撞计算
+                this._$worldTree.currentNode.childTree.each((selfTree) => {
+                    let self = selfTree.node;
+                    if (self instanceof MyBuilder.Collision && self.collision) {
+                        this._$worldTree.currentNode.childTree.each((otherTree) => {
+                            let other = otherTree.node;
+                            if (self !== other && other instanceof MyBuilder.Collision
+                                //@ts-ignore
+                                && self._$insideCollision._$testCollision(self, other))
+                                //@ts-ignore
+                                self._$insideCollision._$collision(other);
+                        });
+                    }
+                });
+            }
             //调用移除子节点方法
             MyBuilder.Tree._$callRemoveNode();
             //调用移除索引子节点方法
@@ -1782,7 +1809,7 @@ var MyBuilder;
             /**
              *  负责存储在其他类中需要调用的系统属性或方法
              */
-            this.__$inside = {
+            this.__$insideNodeBase = {
                 _$childTree: new MyBuilder.Tree(this, []),
                 _$parentTree: undefined,
                 _$nodeDraw: (brush, drawFunc) => {
@@ -1815,11 +1842,22 @@ var MyBuilder;
                     brush._$inside._$setGlobalAlpha(alpha);
                     if (drawFunc)
                         drawFunc();
-                    // @ts-ignore
                     else
-                        this.draw(brush);
+                        this.draw && this.draw(brush);
                     //重置画布Transform
                     brush.resetTransform();
+                },
+                _$nodeInit: () => {
+                    this.init();
+                },
+                _$nodeStart: () => {
+                    this.start();
+                },
+                _$nodeUpdate: (delta) => {
+                    this.update(delta);
+                },
+                _$nodeLeave: () => {
+                    this.leave();
                 }
             };
             //************ 属性函数 *************
@@ -1855,39 +1893,13 @@ var MyBuilder;
             /** 是否继承父节点的transform */
             this._$inheritTransform = true;
             this.name = name && name || "";
-            this._$nodeInit();
-        }
-        /**
-         * 初始化方法,系统内部调用
-         * @private
-         */
-        _$nodeInit() {
-            this.init();
-        }
-        /**
-         * 开始方法,系统内部调用
-         */
-        _$nodeStart() {
-            this.start();
-        }
-        /**
-         * 每帧执行方法,系统调用
-         * @param delta
-         */
-        _$nodeUpdate(delta) {
-            this.update(delta);
-        }
-        /**
-         * 离开节点方法,系统调用
-         */
-        _$nodeLeave() {
-            this.leave();
+            this.__$insideNodeBase._$nodeInit();
         }
         /**
          *  负责存储在其他类中需要调用的系统属性或方法,系统内部调用的
          */
-        get _$inside() {
-            return this.__$inside;
+        get _$insideNodeBase() {
+            return this.__$insideNodeBase;
         }
         get name() {
             return this._$name;
@@ -1923,27 +1935,14 @@ var MyBuilder;
         }
         /** 获取节点相对于场景根节点的坐标 */
         get globalPosition() {
-            let pos = MyBuilder.Vector.zero;
-            let rotation = 0;
-            this.eachParentDown((node) => {
-                rotation += node.rotation;
-                pos.x += node.position.x + Math.cos(rotation) * node.position.x;
-                pos.y += node.position.y + Math.sin(rotation) * node.position.y;
-            });
-            pos.x += this.position.x + Math.cos(rotation + this.rotation) * this.position.x;
-            pos.y += this.position.y + Math.sin(rotation + this.rotation) * this.position.y;
-            return pos;
+            return this._$globalPosition;
         }
         set globalPosition(value) {
             this._$globalPosition = value;
         }
         /** 获取节点相对于场景根节点的旋转角度 */
         get globalRotation() {
-            let rotation = this._$rotation;
-            this.eachParentUp((node) => {
-                rotation += node._$rotation;
-            });
-            return rotation;
+            return this._$globalRotation;
         }
         set globalRotation(value) {
             this._$globalRotation = value;
@@ -1956,11 +1955,7 @@ var MyBuilder;
         }
         /** 获取节点相对于场景根节点的绘制透明度 */
         get globalAlpha() {
-            let globalAlpha = this._$alpha;
-            this.eachParentUp((node) => {
-                globalAlpha *= node._$alpha;
-            });
-            return globalAlpha;
+            return this._$globalAlpha;
         }
         set globalAlpha(value) {
             this._$globalAlpha = value;
@@ -1995,25 +1990,25 @@ var MyBuilder;
         }
         /** 获取子节点树 */
         get childTree() {
-            return this._$inside._$childTree;
+            return this._$insideNodeBase._$childTree;
         }
         /** 获取父节点 */
         get parent() {
-            return this._$inside._$parentTree && this._$inside._$parentTree.node;
+            return this._$insideNodeBase._$parentTree && this._$insideNodeBase._$parentTree.node;
         }
         /** 获取父节点树 */
         get parentTree() {
-            return this._$inside._$parentTree;
+            return this._$insideNodeBase._$parentTree;
         }
         //************ 节点方法 *************
         /** 将该对象从节点树中脱离,子节点也会被调用free()方法 */
         free() {
-            let child = this._$inside._$childTree.child;
+            let child = this._$insideNodeBase._$childTree.child;
             for (let i = 0; i < child.length; i++)
                 child[i].node.free();
-            if (this._$inside._$parentTree) {
-                this._$inside._$parentTree.removeChild(this._$inside._$childTree);
-                this._$inside._$parentTree = undefined;
+            if (this._$insideNodeBase._$parentTree) {
+                this._$insideNodeBase._$parentTree.removeChild(this._$insideNodeBase._$childTree);
+                this._$insideNodeBase._$parentTree = undefined;
             }
             MyBuilder.Tree._$addLeaveNode(this);
             return this;
@@ -2024,20 +2019,20 @@ var MyBuilder;
          */
         getChild(index) {
             let tree;
-            return (tree = this._$inside._$childTree.child[index]) && tree.node || undefined;
+            return (tree = this._$insideNodeBase._$childTree.child[index]) && tree.node || undefined;
         }
         /**
          * 获取子节点个数
          */
         getChildCount() {
-            return this._$inside._$childTree.child.length;
+            return this._$insideNodeBase._$childTree.child.length;
         }
         /**
          * 获取所有子节点对象
          */
         getChildren() {
             let children = [];
-            let child = this._$inside._$childTree.child;
+            let child = this._$insideNodeBase._$childTree.child;
             for (let i = 0; i < child.length; i++)
                 children.push(child[i].node);
             return children;
@@ -2059,7 +2054,7 @@ var MyBuilder;
          * @param layer 当前层级,不需要手动传该参数
          */
         eachChildren(func, index = 0, layer = 1) {
-            this._$inside._$childTree.each((tree, index, layer) => {
+            this._$insideNodeBase._$childTree.each((tree, index, layer) => {
                 return func(tree.node, index, layer);
             });
         }
@@ -2068,9 +2063,9 @@ var MyBuilder;
          * func函数返回false则会终止遍历
          */
         eachParentUp(func) {
-            if (!this._$inside._$parentTree || this._$inside._$parentTree.node._$name === '_$root' || func(this._$inside._$parentTree.node) === false)
+            if (!this._$insideNodeBase._$parentTree || this._$insideNodeBase._$parentTree.node._$name === '_$root' || func(this._$insideNodeBase._$parentTree.node) === false)
                 return;
-            this._$inside._$parentTree.node.eachParentUp(func);
+            this._$insideNodeBase._$parentTree.node.eachParentUp(func);
         }
         /**
          * 向下遍历父节点,从场景根节点开始<br>
@@ -2087,22 +2082,28 @@ var MyBuilder;
          * @param node 子节点
          */
         addChild(node) {
-            this._$inside._$childTree.addChild(node._$inside._$childTree);
+            this._$insideNodeBase._$childTree.addChild(node._$insideNodeBase._$childTree);
             //设置父级节点树
-            node._$inside._$parentTree = this._$inside._$childTree;
+            node._$insideNodeBase._$parentTree = this._$insideNodeBase._$childTree;
         }
         /**
          * 移除一个子节点
          * @param node 子节点
          */
         removeChild(node) {
-            MyBuilder.Tree._$addRemoveNode(this._$inside._$childTree, node._$inside._$childTree);
+            MyBuilder.Tree._$addRemoveNode(this._$insideNodeBase._$childTree, node._$insideNodeBase._$childTree);
         }
         /**
          * 移除所有子节点
          */
         removeAllChild() {
             MyBuilder.Tree._$addRemoveAllNode(this);
+        }
+        /**
+         * 获取场景根节点树
+         */
+        getWorldTree() {
+            return MyBuilder.World.worldTree;
         }
     }
     MyBuilder.NodeBase = NodeBase;
@@ -2149,8 +2150,8 @@ var MyBuilder;
              * Sprite节点会默认有一个空的draw事件
              */
             this.draw = (brush) => { };
-            let tempFunc = this._$inside._$nodeDraw;
-            this._$inside._$nodeDraw = (brush) => {
+            let tempFunc = this._$insideNodeBase._$nodeDraw;
+            this._$insideNodeBase._$nodeDraw = (brush) => {
                 tempFunc(brush, () => {
                     if (this._$texture) {
                         // imW : 图像宽度
@@ -2175,7 +2176,6 @@ var MyBuilder;
                         else
                             brush.context.drawImage(this._$texture, x, y, imW, imH, this._$offset.x, this._$offset.y, imW, imH);
                     }
-                    // @ts-ignore
                     this.draw(brush);
                 });
             };
@@ -2247,13 +2247,69 @@ var MyBuilder;
     }
     MyBuilder.Sprite = Sprite;
     /**
-     * 碰撞检测节点
+     * 碰撞检测节点,目前仅支持圆和圆的碰撞,矩形和矩形碰撞
      */
     class Collision extends Node2D {
         constructor() {
             super(...arguments);
             /** 是否禁用碰撞检测 */
             this._$disable = false;
+            /** 碰撞器形状 */
+            this._$shape = undefined;
+            this.__$insideCollision = {
+                _$collision: (other) => {
+                    this.collision && this.collision(other);
+                },
+                _$testCollision: (self, other) => {
+                    //没有设置碰撞形状
+                    if (!self._$shape || !other._$shape)
+                        return false;
+                    //禁用了碰撞检测
+                    if (self._$disable || other._$disable)
+                        return false;
+                    //*************** 碰撞类型 **************
+                    if (self._$shape instanceof MyBuilder.Circle && other._$shape instanceof MyBuilder.Circle) { //圆与圆碰撞
+                        let c1 = new MyBuilder.Circle(self._$shape.position.add(self.position), self._$shape.r);
+                        let c2 = new MyBuilder.Circle(other._$shape.position.add(other.position), other._$shape.r);
+                        return c1.isColl(c2);
+                    }
+                    else if (self._$shape instanceof MyBuilder.Rectangle && other._$shape instanceof MyBuilder.Rectangle) { //矩形与矩形碰撞
+                        return Math.abs(self.position.x + self._$shape.x - other.position.x + other._$shape.x) < self._$shape.w / 2 + other._$shape.w / 2
+                            && Math.abs(self.position.y + self._$shape.y - other.position.y + other._$shape.y) < self._$shape.h / 2 + other._$shape.h / 2;
+                    }
+                    else if (self._$shape instanceof MyBuilder.Circle && other._$shape instanceof MyBuilder.Rectangle) { //圆与矩形碰撞
+                    }
+                    else if (self._$shape instanceof MyBuilder.Rectangle && other._$shape instanceof MyBuilder.Circle) { //矩形与圆碰撞
+                    }
+                    return false;
+                }
+            };
+            /**
+             * 碰撞触发函数
+             */
+            this.collision = undefined;
+        }
+        /**  获取是否禁用碰撞检测 */
+        get disable() {
+            return this._$disable;
+        }
+        /**  设置是否禁用碰撞检测 */
+        set disable(value) {
+            this._$disable = value;
+        }
+        /**  获取碰撞器形状 */
+        get shape() {
+            return this._$shape;
+        }
+        /**  设置碰撞器形状 */
+        set shape(value) {
+            this._$shape = value;
+        }
+        /**
+         * 获取内置变量
+         */
+        get _$insideCollision() {
+            return this.__$insideCollision;
         }
     }
     MyBuilder.Collision = Collision;
@@ -2367,7 +2423,7 @@ var MyBuilder;
                 else
                     temp.parent.child.push(temp.child);
                 //调用初始化方法++
-                tempNodes[i].child.node._$nodeStart();
+                tempNodes[i].child.node._$insideNodeBase._$nodeStart();
             }
         }
         /** 添加移除节点,系统内部调用 */
@@ -2378,7 +2434,7 @@ var MyBuilder;
             if (index !== -1)
                 this._$removeNode.splice(index, 1);
             //移除父节点
-            child.node._$inside._$parentTree = undefined;
+            child.node._$insideNodeBase._$parentTree = undefined;
             this._$removeNode.push(pc);
         }
         /** 调用移除节点,系统调用 */
@@ -2397,18 +2453,18 @@ var MyBuilder;
             if (index !== -1)
                 this._$removeAllNode.splice(index, 1);
             //将子节点的父节点设置为undefined
-            let child = node._$inside._$childTree.child;
+            let child = node._$insideNodeBase._$childTree.child;
             // @ts-ignore
             for (let i = 0; i < child.length; i++)
                 // @ts-ignore
-                child[i].node._$inside._$parentTree = undefined;
+                child[i].node._$insideNodeBase._$parentTree = undefined;
             this._$removeAllNode.push(node);
         }
         /** 调用移除节点,系统调用 */
         static _$callRemoveAllNode() {
             for (let i = 0; i < this._$removeAllNode.length; i++)
                 //移除所有子节点方法
-                this._$removeAllNode[i]._$inside._$childTree.removeAllChild();
+                this._$removeAllNode[i]._$insideNodeBase._$childTree.removeAllChild();
             Tree._$removeAllNode = [];
         }
         /** 添加离开的节点,系统内部调用 */
@@ -2425,7 +2481,7 @@ var MyBuilder;
             Tree._$leaveNode = [];
             for (let i = 0; i < tempNodes.length; i++)
                 //调用离开节点方法
-                tempNodes[i]._$nodeLeave();
+                tempNodes[i]._$insideNodeBase._$nodeLeave();
         }
     }
     //*****************************************************

@@ -32,53 +32,23 @@ namespace MyBuilder {
 		 */
 		public abstract leave(): void;
 
-		/**
-		 * 初始化方法,系统内部调用
-		 * @private
-		 */
-		public _$nodeInit() {
-			this.init();
-		}
-
-		/**
-		 * 开始方法,系统内部调用
-		 */
-		public _$nodeStart() {
-			this.start();
-		}
-
-		/**
-		 * 每帧执行方法,系统调用
-		 * @param delta
-		 */
-		public _$nodeUpdate(delta: number) {
-			this.update(delta);
-		}
-
-		/**
-		 * 离开节点方法,系统调用
-		 */
-		public _$nodeLeave() {
-			this.leave();
-		}
-
 		/** 实例化节点 */
 		protected constructor(name?: string) {
 			this.name = name && name || "";
-			this._$nodeInit();
+			this.__$insideNodeBase._$nodeInit();
 		}
 
 		/**
 		 *  负责存储在其他类中需要调用的系统属性或方法,系统内部调用的
 		 */
-		public get _$inside() {
-			return this.__$inside;
+		public get _$insideNodeBase() {
+			return this.__$insideNodeBase;
 		}
 
 		/**
 		 *  负责存储在其他类中需要调用的系统属性或方法
 		 */
-		private __$inside: {
+		private __$insideNodeBase: {
 			//*********************** 内部属性 ***************
 			/** 子节点树,内部变量 */
 			_$childTree: Tree,
@@ -88,7 +58,25 @@ namespace MyBuilder {
 			/**
 			 * 系统调用的绘制方法
 			 */
-			_$nodeDraw: (brush: Brush, drawFunc?: () => void) => void
+			_$nodeDraw: (brush: Brush, drawFunc?: () => void) => void,
+			/**
+			 * 初始化方法,系统内部调用
+			 * @private
+			 */
+			_$nodeInit: () => void,
+			/**
+			 * 开始方法,系统内部调用
+			 */
+			_$nodeStart: () => void,
+			/**
+			 * 每帧执行方法,系统调用
+			 * @param delta
+			 */
+			_$nodeUpdate: (delta: number) => void,
+			/**
+			 * 离开节点方法,系统调用
+			 */
+			_$nodeLeave: () => void
 		} = {
 				_$childTree: new Tree(this, []),
 				_$parentTree: undefined,
@@ -120,11 +108,22 @@ namespace MyBuilder {
 					brush._$inside._$setGlobalAlpha(alpha);
 
 					if (drawFunc) drawFunc();
-					// @ts-ignore
-					else this.draw(brush);
+					else this.draw && this.draw(brush);
 
 					//重置画布Transform
 					brush.resetTransform();
+				},
+				_$nodeInit: () => {
+					this.init();
+				},
+				_$nodeStart: () => {
+					this.start();
+				},
+				_$nodeUpdate: (delta: number) => {
+					this.update(delta);
+				},
+				_$nodeLeave: () => {
+					this.leave();
 				}
 			}
 
@@ -211,16 +210,7 @@ namespace MyBuilder {
 
 		/** 获取节点相对于场景根节点的坐标 */
 		public get globalPosition(): Vector {
-			let pos = Vector.zero;
-			let rotation = 0;
-			this.eachParentDown((node) => {
-				rotation += node.rotation;
-				pos.x += node.position.x + Math.cos(rotation) * node.position.x;
-				pos.y += node.position.y + Math.sin(rotation) * node.position.y;
-			})
-			pos.x += this.position.x + Math.cos(rotation + this.rotation) * this.position.x;
-			pos.y += this.position.y + Math.sin(rotation + this.rotation) * this.position.y;
-			return pos;
+			return this._$globalPosition;
 		}
 
 		public set globalPosition(value: Vector) {
@@ -229,11 +219,7 @@ namespace MyBuilder {
 
 		/** 获取节点相对于场景根节点的旋转角度 */
 		public get globalRotation(): number {
-			let rotation = this._$rotation;
-			this.eachParentUp((node) => {
-				rotation += node._$rotation;
-			})
-			return rotation;
+			return this._$globalRotation;
 		}
 
 		public set globalRotation(value: number) {
@@ -250,11 +236,7 @@ namespace MyBuilder {
 
 		/** 获取节点相对于场景根节点的绘制透明度 */
 		public get globalAlpha(): number {
-			let globalAlpha = this._$alpha;
-			this.eachParentUp((node) => {
-				globalAlpha *= node._$alpha;
-			})
-			return globalAlpha;
+			return this._$globalAlpha;
 		}
 
 		public set globalAlpha(value: number) {
@@ -296,29 +278,29 @@ namespace MyBuilder {
 
 		/** 获取子节点树 */
 		public get childTree(): Tree {
-			return this._$inside._$childTree;
+			return this._$insideNodeBase._$childTree;
 		}
 
 		/** 获取父节点 */
 		public get parent(): NodeBase | undefined {
-			return this._$inside._$parentTree && this._$inside._$parentTree.node;
+			return this._$insideNodeBase._$parentTree && this._$insideNodeBase._$parentTree.node;
 		}
 
 		/** 获取父节点树 */
 		public get parentTree(): Tree | undefined {
-			return this._$inside._$parentTree;
+			return this._$insideNodeBase._$parentTree;
 		}
 
 		//************ 节点方法 *************
 
 		/** 将该对象从节点树中脱离,子节点也会被调用free()方法 */
 		public free(): NodeBase {
-			let child: TreeType = this._$inside._$childTree.child;
+			let child: TreeType = this._$insideNodeBase._$childTree.child;
 			for (let i = 0; i < child.length; i++)
 				child[i].node.free();
-			if (this._$inside._$parentTree) {
-				this._$inside._$parentTree.removeChild(this._$inside._$childTree);
-				this._$inside._$parentTree = undefined;
+			if (this._$insideNodeBase._$parentTree) {
+				this._$insideNodeBase._$parentTree.removeChild(this._$insideNodeBase._$childTree);
+				this._$insideNodeBase._$parentTree = undefined;
 			}
 			Tree._$addLeaveNode(this);
 			return this;
@@ -330,14 +312,14 @@ namespace MyBuilder {
 		 */
 		public getChild(index: number): NodeBase | undefined {
 			let tree;
-			return (tree = this._$inside._$childTree.child[index]) && tree.node || undefined;
+			return (tree = this._$insideNodeBase._$childTree.child[index]) && tree.node || undefined;
 		}
 
 		/**
 		 * 获取子节点个数
 		 */
 		public getChildCount(): number {
-			return this._$inside._$childTree.child.length;
+			return this._$insideNodeBase._$childTree.child.length;
 		}
 
 		/**
@@ -345,7 +327,7 @@ namespace MyBuilder {
 		 */
 		public getChildren(): NodeBase[] {
 			let children: NodeBase[] = [];
-			let child = this._$inside._$childTree.child;
+			let child = this._$insideNodeBase._$childTree.child;
 			for (let i = 0; i < child.length; i++)
 				children.push(child[i].node);
 			return children;
@@ -369,9 +351,9 @@ namespace MyBuilder {
 		 * @param layer 当前层级,不需要手动传该参数
 		 */
 		public eachChildren(func: (node: NodeBase, index?: number, layer?: number) => void | boolean, index: number = 0, layer: number = 1) {
-			this._$inside._$childTree.each((tree, index, layer) => {
+			this._$insideNodeBase._$childTree.each((tree, index, layer) => {
 				return func(tree.node, index, layer);
-			})
+			});
 		}
 
 		/** 
@@ -379,8 +361,8 @@ namespace MyBuilder {
 		 * func函数返回false则会终止遍历
 		 */
 		public eachParentUp(func: (node: NodeBase) => void | boolean) {
-			if (!this._$inside._$parentTree || this._$inside._$parentTree.node._$name === '_$root' || func(this._$inside._$parentTree.node) === false) return;
-			this._$inside._$parentTree.node.eachParentUp(func);
+			if (!this._$insideNodeBase._$parentTree || this._$insideNodeBase._$parentTree.node._$name === '_$root' || func(this._$insideNodeBase._$parentTree.node) === false) return;
+			this._$insideNodeBase._$parentTree.node.eachParentUp(func);
 		}
 
 		/** 
@@ -398,9 +380,9 @@ namespace MyBuilder {
 		 * @param node 子节点
 		 */
 		public addChild(node: NodeBase) {
-			this._$inside._$childTree.addChild(node._$inside._$childTree);
+			this._$insideNodeBase._$childTree.addChild(node._$insideNodeBase._$childTree);
 			//设置父级节点树
-			node._$inside._$parentTree = this._$inside._$childTree;
+			node._$insideNodeBase._$parentTree = this._$insideNodeBase._$childTree;
 		}
 
 		/**
@@ -408,7 +390,7 @@ namespace MyBuilder {
 		 * @param node 子节点
 		 */
 		public removeChild(node: NodeBase) {
-			Tree._$addRemoveNode(this._$inside._$childTree, node._$inside._$childTree);
+			Tree._$addRemoveNode(this._$insideNodeBase._$childTree, node._$insideNodeBase._$childTree);
 		}
 
 		/**
@@ -418,6 +400,12 @@ namespace MyBuilder {
 			Tree._$addRemoveAllNode(this);
 		}
 
+		/**
+		 * 获取场景根节点树
+		 */
+		public getWorldTree(): WorldTree {
+			return World.worldTree;
+		}
 	}
 
 	/**
@@ -475,8 +463,8 @@ namespace MyBuilder {
 
 		public constructor(name?: string) {
 			super(name);
-			let tempFunc = this._$inside._$nodeDraw;
-			this._$inside._$nodeDraw = (brush: Brush) => {
+			let tempFunc = this._$insideNodeBase._$nodeDraw;
+			this._$insideNodeBase._$nodeDraw = (brush: Brush) => {
 				tempFunc(brush, () => {
 					if (this._$texture) {
 						// imW : 图像宽度
@@ -501,7 +489,6 @@ namespace MyBuilder {
 								imW, imH);
 						else brush.context.drawImage(this._$texture, x, y, imW, imH, this._$offset.x, this._$offset.y, imW, imH);
 					}
-					// @ts-ignore
 					this.draw(brush);
 				});
 			}
@@ -583,14 +570,83 @@ namespace MyBuilder {
 	}
 
 	/**
-	 * 碰撞检测节点
+	 * 碰撞检测节点,目前仅支持圆和圆的碰撞,矩形和矩形碰撞
 	 */
 	export abstract class Collision extends Node2D {
+
 		/** 是否禁用碰撞检测 */
 		private _$disable: boolean = false;
 		/** 碰撞器形状 */
-		private _$shape: Shape | undefined;
+		private _$shape: Shape | undefined = undefined;
 
+		/**  获取是否禁用碰撞检测 */
+		public get disable(): boolean {
+			return this._$disable;
+		}
+		/**  设置是否禁用碰撞检测 */
+		public set disable(value: boolean) {
+			this._$disable = value;
+		}
+
+		/**  获取碰撞器形状 */
+		public get shape(): Shape | undefined {
+			return this._$shape;
+		}
+		/**  设置碰撞器形状 */
+		public set shape(value: Shape | undefined) {
+			this._$shape = value;
+		}
+
+		/**
+		 * 获取内置变量
+		 */
+		public get _$insideCollision() {
+			return this.__$insideCollision;
+		}
+
+		private __$insideCollision: {
+			/**
+			 * 碰撞函数,系统内部调用
+			 */
+			_$collision: (other: Collision) => void
+			/**
+			 * 检测两个碰撞节点是否碰撞,系统内部调用
+			 */
+			_$testCollision: (self: Collision, other: Collision) => boolean
+		} = {
+				_$collision: (other: Collision) => {
+					this.collision && this.collision(other);
+				},
+				_$testCollision: (self: Collision, other: Collision) => {
+
+					//没有设置碰撞形状
+					if (!self._$shape || !other._$shape) return false;
+					//禁用了碰撞检测
+					if (self._$disable || other._$disable) return false;
+
+					//*************** 碰撞类型 **************
+
+					if (self._$shape instanceof Circle && other._$shape instanceof Circle) { //圆与圆碰撞
+						let c1 = new Circle(self._$shape.position.add(self.position), self._$shape.r);
+						let c2 = new Circle(other._$shape.position.add(other.position), other._$shape.r);
+						return c1.isColl(c2);
+					} else if (self._$shape instanceof Rectangle && other._$shape instanceof Rectangle) { //矩形与矩形碰撞
+						return Math.abs(self.position.x + self._$shape.x - other.position.x + other._$shape.x) < self._$shape.w / 2 + other._$shape.w / 2
+							&& Math.abs(self.position.y + self._$shape.y - other.position.y + other._$shape.y) < self._$shape.h / 2 + other._$shape.h / 2
+					} else if (self._$shape instanceof Circle && other._$shape instanceof Rectangle) { //圆与矩形碰撞
+
+					} else if (self._$shape instanceof Rectangle && other._$shape instanceof Circle) { //矩形与圆碰撞
+
+					}
+
+					return false;
+				}
+			};
+
+		/**
+		 * 碰撞触发函数
+		 */
+		public collision: ((other: Collision) => void) | undefined = undefined;
 	}
 
 }

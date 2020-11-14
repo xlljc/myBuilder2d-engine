@@ -152,7 +152,7 @@ declare namespace MyBuilder {
         /** <p color='#FFFFFF'>白色</p><br>十六进制 : #FFFFFF<br>RGB : (255,255,255) */
         static get white(): Color;
         /** <p color='#F0FFFF'>天蓝灰</p><br>十六进制 : #F0FFFF<br>RGB : (202,235,216) */
-        static get skyB1ueGrey(): Color;
+        static get skyBlueGrey(): Color;
         /** <p color='#CCCCCC'>灰色</p><br>十六进制 : #CCCCCC<br>RGB : (192,192,192) */
         static get gray(): Color;
         /** <p color='#FAFFF0'>象牙灰</p><br>十六进制 : #FAFFF0<br>RGB : (251,255,242) */
@@ -322,14 +322,19 @@ declare namespace MyBuilder {
         /** 圆的半径 */
         r: number;
         /**
-         * 创建一个圆形,参数为 Circle 或 (Point,radius) 或 (Vector,radius) 或 number(x,y,r) 或 不填
-         * @param arg Circle 或 (Point,radius) 或 (Vector,radius) 或 number(x,y,r) 或 不填
+         * 创建一个圆形,参数为 Circle 对象 或 (Point,radius) 或 (Vector,radius) 或 number(x,y,radius) 或 不填
+         * @param arg Circle 对象 或 (Point,radius) 或 (Vector,radius) 或 number(x,y,radius) 或 不填
          */
         constructor(...arg: (number | Point | Vector | Circle)[]);
+        /**
+         * 获取矩形坐标的向量值
+         */
+        get position(): Vector;
         /** 比较两个圆形的值是否相等 */
         equals(circle: Circle): boolean;
         /** 转换为字符串 */
         toString(): string;
+        isColl(other: Circle): boolean;
     }
 }
 declare namespace MyBuilder {
@@ -373,6 +378,8 @@ declare namespace MyBuilder {
         x: number;
         /** 坐标点:y */
         y: number;
+        /** 获取形状的坐标 */
+        readonly position: Vector;
         /** 比较两个形状是否相同 */
         equals(shape: Shape): boolean;
         toString(): any;
@@ -905,30 +912,12 @@ declare namespace MyBuilder {
          * 也就是调用free()方法后,在该帧结束时执行该方法
          */
         abstract leave(): void;
-        /**
-         * 初始化方法,系统内部调用
-         * @private
-         */
-        _$nodeInit(): void;
-        /**
-         * 开始方法,系统内部调用
-         */
-        _$nodeStart(): void;
-        /**
-         * 每帧执行方法,系统调用
-         * @param delta
-         */
-        _$nodeUpdate(delta: number): void;
-        /**
-         * 离开节点方法,系统调用
-         */
-        _$nodeLeave(): void;
         /** 实例化节点 */
         protected constructor(name?: string);
         /**
          *  负责存储在其他类中需要调用的系统属性或方法,系统内部调用的
          */
-        get _$inside(): {
+        get _$insideNodeBase(): {
             /** 子节点树,内部变量 */
             _$childTree: Tree;
             /** 父节点树,内部变量 */
@@ -937,11 +926,29 @@ declare namespace MyBuilder {
              * 系统调用的绘制方法
              */
             _$nodeDraw: (brush: Brush, drawFunc?: (() => void) | undefined) => void;
+            /**
+             * 初始化方法,系统内部调用
+             * @private
+             */
+            _$nodeInit: () => void;
+            /**
+             * 开始方法,系统内部调用
+             */
+            _$nodeStart: () => void;
+            /**
+             * 每帧执行方法,系统调用
+             * @param delta
+             */
+            _$nodeUpdate: (delta: number) => void;
+            /**
+             * 离开节点方法,系统调用
+             */
+            _$nodeLeave: () => void;
         };
         /**
          *  负责存储在其他类中需要调用的系统属性或方法
          */
-        private __$inside;
+        private __$insideNodeBase;
         /**
          * 绘制方法,每帧调用,通过brush来画图,
          * 该方法会在update方法之后调用,zindex越小调用就越早
@@ -1065,6 +1072,10 @@ declare namespace MyBuilder {
          * 移除所有子节点
          */
         removeAllChild(): void;
+        /**
+         * 获取场景根节点树
+         */
+        getWorldTree(): WorldTree;
     }
     /**
      * 2d节点
@@ -1137,13 +1148,39 @@ declare namespace MyBuilder {
         set frame(value: number);
     }
     /**
-     * 碰撞检测节点
+     * 碰撞检测节点,目前仅支持圆和圆的碰撞,矩形和矩形碰撞
      */
     abstract class Collision extends Node2D {
         /** 是否禁用碰撞检测 */
         private _$disable;
         /** 碰撞器形状 */
         private _$shape;
+        /**  获取是否禁用碰撞检测 */
+        get disable(): boolean;
+        /**  设置是否禁用碰撞检测 */
+        set disable(value: boolean);
+        /**  获取碰撞器形状 */
+        get shape(): Shape | undefined;
+        /**  设置碰撞器形状 */
+        set shape(value: Shape | undefined);
+        /**
+         * 获取内置变量
+         */
+        get _$insideCollision(): {
+            /**
+             * 碰撞函数,系统内部调用
+             */
+            _$collision: (other: Collision) => void;
+            /**
+             * 检测两个碰撞节点是否碰撞,系统内部调用
+             */
+            _$testCollision: (self: Collision, other: Collision) => boolean;
+        };
+        private __$insideCollision;
+        /**
+         * 碰撞触发函数
+         */
+        collision: ((other: Collision) => void) | undefined;
     }
 }
 declare namespace MyBuilder {

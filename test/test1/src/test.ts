@@ -14,7 +14,7 @@ class Controller extends mb.Node2D {
         //this.position = new mb.Vector(25, 25);
 
         let temp: MyBuilder.Node2D = this;
-        for (let i = 0; i < 1000; i++) {
+        for (let i = 0; i < 10; i++) {
             let childTemp = new MyShape("MyShape" + i);
             temp.addChild(childTemp);
             temp = childTemp;
@@ -69,7 +69,7 @@ window.onload = function () {
         mb.World.Init(window, 0, 0, 700, 420, 0);
         mb.World.thread.speed = 60;
         mb.World.worldTree.currentNode = new Controller("控制器");
-        mb.World.canvas.color = mb.Color.skyB1ueGrey.toHexadecimal();
+        mb.World.canvas.color = mb.Color.skyBlueGrey.toHexadecimal();
         mb.World.canvas.imageSmoothing = false;
     }
     let doc = document.getElementById("fps-box");

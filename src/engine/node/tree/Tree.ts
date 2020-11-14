@@ -139,7 +139,7 @@ namespace MyBuilder {
                 if (!temp.parent.child) temp.parent.child = [temp.child];
                 else temp.parent.child.push(temp.child);
                 //调用初始化方法++
-                tempNodes[i].child.node._$nodeStart();
+                tempNodes[i].child.node._$insideNodeBase._$nodeStart();
             }
         }
 
@@ -150,7 +150,7 @@ namespace MyBuilder {
             let index = this._$removeNode.indexOf(pc);
             if (index !== -1) this._$removeNode.splice(index, 1);
             //移除父节点
-            child.node._$inside._$parentTree = undefined;
+            child.node._$insideNodeBase._$parentTree = undefined;
             this._$removeNode.push(pc);
         }
 
@@ -170,11 +170,11 @@ namespace MyBuilder {
             let index = this._$removeAllNode.indexOf(node);
             if (index !== -1) this._$removeAllNode.splice(index, 1);
             //将子节点的父节点设置为undefined
-            let child = node._$inside._$childTree.child;
+            let child = node._$insideNodeBase._$childTree.child;
             // @ts-ignore
             for (let i = 0; i < child.length; i++)
                 // @ts-ignore
-                child[i].node._$inside._$parentTree = undefined;
+                child[i].node._$insideNodeBase._$parentTree = undefined;
             this._$removeAllNode.push(node);
         }
 
@@ -182,7 +182,7 @@ namespace MyBuilder {
         public static _$callRemoveAllNode() {
             for (let i = 0; i < this._$removeAllNode.length; i++)
                 //移除所有子节点方法
-                this._$removeAllNode[i]._$inside._$childTree.removeAllChild();
+                this._$removeAllNode[i]._$insideNodeBase._$childTree.removeAllChild();
             Tree._$removeAllNode = [];
         }
 
@@ -200,7 +200,7 @@ namespace MyBuilder {
             Tree._$leaveNode = [];
             for (let i = 0; i < tempNodes.length; i++)
                 //调用离开节点方法
-                tempNodes[i]._$nodeLeave();
+                tempNodes[i]._$insideNodeBase._$nodeLeave();
         }
     }
 

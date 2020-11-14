@@ -124,31 +124,50 @@ namespace MyBuilder {
         private static updateFunc(delta: number) {
             //更新按键
             World._$input._$beforeUpdate();
-            //遍历节点树,调用update方法
-            World._$worldTree.currentNode && this._$worldTree.currentNode.childTree.each((tree) => {
-                tree.node._$nodeUpdate(delta);
-            });
-            //清理画布
-            World._$canvas.clear();
 
-            //遍历节点树,排序draw方法
-            let nodeDrawList: (NodeBase[])[] = [];
-            World._$worldTree.currentNode && this._$worldTree.currentNode.childTree.each((tree) => {
-                let node = tree.node;
-                //不可见的
-                if (!node.visible) return false;
-                //没有实现绘制方法
-                if (!node.draw) return;
+            //如果节点树没有根节点,那么不执行后面的代码
+            if (World._$worldTree.currentNode) {
+                //遍历节点树,调用update方法
+                this._$worldTree.currentNode.childTree.each((tree) => {
+                    tree.node._$insideNodeBase._$nodeUpdate(delta);
+                });
+                //清理画布
+                World._$canvas.clear();
 
-                let list = nodeDrawList[node.zIndex + 1000];
-                if (!list) nodeDrawList[node.zIndex + 1000] = [node];
-                else list.push(node);
-            });
-            //调用节点的draw方法
-            nodeDrawList.forEach((nodes: NodeBase[]) => {
-                for (let i = 0; i < nodes.length; i++)
-                    nodes[i]._$inside._$nodeDraw(World._$canvas.brush);
-            });
+                //遍历节点树,排序draw方法
+                let nodeDrawList: (NodeBase[])[] = [];
+                this._$worldTree.currentNode.childTree.each((tree) => {
+                    let node = tree.node;
+                    //不可见的
+                    if (!node.visible) return false;
+                    //没有实现绘制方法
+                    if (!node.draw) return;
+
+                    let list = nodeDrawList[node.zIndex + 1000];
+                    if (!list) nodeDrawList[node.zIndex + 1000] = [node];
+                    else list.push(node);
+                });
+                //调用节点的draw方法
+                nodeDrawList.forEach((nodes: NodeBase[]) => {
+                    for (let i = 0; i < nodes.length; i++)
+                        nodes[i]._$insideNodeBase._$nodeDraw(World._$canvas.brush);
+                });
+
+                //碰撞计算
+                this._$worldTree.currentNode.childTree.each((selfTree) => {
+                    let self = selfTree.node;
+                    if (self instanceof Collision && self.collision) {
+                        this._$worldTree.currentNode.childTree.each((otherTree) => {
+                            let other = otherTree.node;
+                            if (self !== other && other instanceof Collision
+                                //@ts-ignore
+                                && self._$insideCollision._$testCollision(self, other))
+                                //@ts-ignore
+                                self._$insideCollision._$collision(other);
+                        });
+                    }
+                });
+            }
             //调用移除子节点方法
             Tree._$callRemoveNode();
             //调用移除索引子节点方法

@@ -337,7 +337,7 @@ namespace MyBuilder {
             return new Color(255, 255, 255);
         }
         /** <p color='#F0FFFF'>天蓝灰</p><br>十六进制 : #F0FFFF<br>RGB : (202,235,216) */
-        public static get skyB1ueGrey(): Color {
+        public static get skyBlueGrey(): Color {
             return new Color(202, 235, 216);
         }
         /** <p color='#CCCCCC'>灰色</p><br>十六进制 : #CCCCCC<br>RGB : (192,192,192) */
